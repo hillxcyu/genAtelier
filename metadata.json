@@ -1,0 +1,5 @@
+{
+  "name": "GenFashion Atelier",
+  "description": "A specialized Generative Media solution for the Apparel & Fashion vertical, featuring Virtual Try-On and Automated Lookbook generation.",
+  "requestFramePermissions": ["camera"]
+}
