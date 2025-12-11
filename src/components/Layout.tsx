@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shirt, Wand2, Layers, ShoppingBag, Menu, X, BookOpen, Camera, Palette, Type, Droplet, Sparkles } from 'lucide-react';
 import { BrandVibe } from '../types';
+import { getContrastText } from '../utils/color';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,14 +23,26 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurren
     { id: 'ingestion', label: 'Brand Ingestion', icon: ShoppingBag },
   ];
 
-  const containerStyle = brandVibe ? {
-    background: `linear-gradient(135deg, ${brandVibe.colors[0]} 0%, ${brandVibe.colors[2]} 100%)`,
-    fontFamily: brandVibe.font === 'serif' ? 'serif' : brandVibe.font === 'mono' ? 'monospace' : 'sans-serif',
-  } : {};
+  const primaryColor = brandVibe ? brandVibe.colors[0] : '#000000';
+  const contrastColor = getContrastText(primaryColor);
+  const isLightBackground = contrastColor === '#000000';
+
+  const containerStyle = {
+    ...(brandVibe ? {
+      background: `linear-gradient(135deg, ${brandVibe.colors[0]} 0%, ${brandVibe.colors[2]} 100%)`,
+      fontFamily: brandVibe.font === 'serif' ? 'serif' : brandVibe.font === 'mono' ? 'monospace' : 'sans-serif',
+    } : {}),
+    '--text-primary': isLightBackground ? '#000000' : '#ffffff',
+    '--text-secondary': isLightBackground ? '#404040' : '#a3a3a3', // neutral-700 vs neutral-400
+    '--text-tertiary': isLightBackground ? '#525252' : '#737373', // neutral-600 vs neutral-500
+    '--card-bg': isLightBackground ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.05)',
+    '--card-border': isLightBackground ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
+    '--input-bg': isLightBackground ? 'rgba(0, 0, 0, 0.05)' : 'rgba(0, 0, 0, 0.4)',
+  } as React.CSSProperties;
 
   return (
     <div 
-      className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-fuchsia-500 selection:text-white overflow-x-hidden transition-all duration-1000 ease-in-out"
+      className="min-h-screen bg-neutral-950 text-[var(--text-primary)] font-sans selection:bg-fuchsia-500 selection:text-white overflow-x-hidden transition-all duration-1000 ease-in-out"
       style={containerStyle}
     >
       {/* Dynamic Ambient Glow (Global) */}
@@ -47,10 +60,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurren
       )}
 
       {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-md border-b border-white/10 transition-colors duration-500"
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-md border-b border-[var(--card-border)] transition-colors duration-500"
            style={{ 
              backgroundColor: brandVibe ? `${brandVibe.colors[0]}CC` : undefined,
-             borderColor: brandVibe ? `${brandVibe.accentColor}33` : undefined
+             borderColor: brandVibe ? `${brandVibe.accentColor}33` : undefined,
+             color: 'var(--text-primary)'
            }}
       >
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -67,7 +81,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurren
             >
               <Wand2 className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+            <span 
+              className="text-xl font-bold tracking-tight bg-clip-text text-transparent"
+              style={{ 
+                backgroundImage: isLightBackground 
+                  ? 'linear-gradient(to right, #000000, rgba(0,0,0,0.6))' 
+                  : 'linear-gradient(to right, #ffffff, rgba(255,255,255,0.6))' 
+              }}
+            >
               {brandVibe ? brandVibe.name : <>GenFashion<span className="font-light">Atelier</span></>}
             </span>
           </div>
@@ -78,12 +99,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurren
               <button
                 key={item.id}
                 onClick={() => setCurrentView(item.id as any)}
-                className={`group flex items-center rounded-full transition-all duration-300 ease-in-out ${
-                  currentView === item.id 
-                    ? 'text-white bg-white/10' 
-                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                }`}
-                style={currentView === item.id && brandVibe ? { color: brandVibe.accentColor, backgroundColor: `${brandVibe.accentColor}20` } : undefined}
+                className={`group flex items-center rounded-full transition-all duration-300 ease-in-out hover:bg-[var(--card-bg)]`}
+                style={{
+                  color: currentView === item.id && brandVibe ? brandVibe.accentColor : 'var(--text-secondary)',
+                  backgroundColor: currentView === item.id && brandVibe ? `${brandVibe.accentColor}20` : undefined
+                }}
               >
                 <div className="p-2.5">
                   <item.icon className="w-5 h-5" />
@@ -95,27 +115,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurren
             ))}
             
             {brandVibe && (
-              <button
-                onClick={() => setIsBrandPanelOpen(true)}
-                className="p-2.5 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors relative group"
-                title="View Brand DNA"
-              >
-                <Palette className="w-5 h-5" />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-fuchsia-500 rounded-full animate-pulse" style={{ backgroundColor: brandVibe.accentColor }} />
-              </button>
+              <>
+                <div className="w-px h-8 bg-white/10 mx-2" />
+                <button
+                  onClick={() => setIsBrandPanelOpen(true)}
+                  className="p-3 rounded-full text-white transition-all hover:scale-110 relative group shadow-lg shadow-white/10"
+                  style={{ 
+                    backgroundColor: brandVibe.accentColor,
+                    boxShadow: `0 0 20px ${brandVibe.accentColor}60`
+                  }}
+                  title="View Brand DNA"
+                >
+                  <Palette className="w-6 h-6" style={{ color: getContrastText(brandVibe.accentColor) }} />
+                  <span className="absolute inset-0 rounded-full animate-ping opacity-75" style={{ backgroundColor: brandVibe.accentColor }} />
+                </button>
+              </>
             )}
-
-            <div className="w-px h-8 bg-white/10 mx-2" />
-            <button 
-              className="px-5 py-2 bg-white text-neutral-950 rounded-full text-sm font-semibold hover:bg-neutral-200 transition-colors shadow-lg shadow-white/10"
-              style={brandVibe ? { 
-                backgroundColor: brandVibe.accentColor, 
-                color: '#fff', 
-                boxShadow: `0 0 20px ${brandVibe.accentColor}40`
-              } : undefined}
-            >
-              Get Started
-            </button>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -180,8 +195,39 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurren
                       Aa Bb Cc
                     </div>
                     <div className="text-xs text-neutral-500 font-mono capitalize">{brandVibe.font} Family</div>
+                    {brandVibe.fonts && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {brandVibe.fonts.map((f, i) => (
+                           <span key={i} className="px-2 py-1 bg-white/10 rounded text-[10px] text-neutral-300 font-mono">{f}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Mood & Keywords */}
+                {(brandVibe.mood || brandVibe.keywords) && (
+                  <div>
+                    <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Sparkles className="w-3 h-3" /> Vibe & Keywords
+                    </h3>
+                    <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-3">
+                      {brandVibe.mood && (
+                        <div>
+                          <div className="text-xs text-neutral-500 mb-1">Core Mood</div>
+                          <div className="text-lg font-medium text-white">{brandVibe.mood}</div>
+                        </div>
+                      )}
+                      {brandVibe.keywords && (
+                        <div className="flex flex-wrap gap-2">
+                          {brandVibe.keywords.map((k, i) => (
+                            <span key={i} className="text-xs text-neutral-400">#{k}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Colors */}
                 <div>

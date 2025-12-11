@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { motion } from 'motion/react';
-import { Upload, Sparkles, RefreshCw, Shirt, User, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Upload, Sparkles, RefreshCw, Shirt, User, X, ShoppingBag } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
-import { BrandVibe } from '../types';
+import { BrandVibe, CatalogItem } from '../types';
+import { getContrastText } from '../utils/color';
 
 // Initialize Gemini
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -14,14 +15,16 @@ interface ImageState {
 
 interface VTOModuleProps {
   brandVibe?: BrandVibe | null;
+  catalog?: CatalogItem[] | null;
 }
 
-export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe }) => {
+export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
   const [personImage, setPersonImage] = useState<ImageState>({ file: null, preview: null });
   const [garmentImage, setGarmentImage] = useState<ImageState>({ file: null, preview: null });
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCatalog, setShowCatalog] = useState(false);
 
   const personInputRef = useRef<HTMLInputElement>(null);
   const garmentInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +41,26 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe }) => {
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCatalogSelect = async (item: CatalogItem) => {
+    try {
+      setShowCatalog(false);
+      // Convert URL to base64
+      const response = await fetch(item.imageUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setGarmentImage({ 
+          file: new File([blob], item.name, { type: blob.type }), 
+          preview: reader.result as string 
+        });
+      };
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error("Error loading catalog item:", err);
+      setError("Failed to load catalog item image.");
     }
   };
 
@@ -186,24 +209,24 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe }) => {
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="mb-12">
-        <h2 className="text-3xl font-bold text-white mb-4">Virtual Fitting Room</h2>
-        <p className="text-neutral-400">Upload a photo of yourself and a garment to see the magic happen.</p>
+        <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-4">Virtual Fitting Room</h2>
+        <p className="text-[var(--text-secondary)]">Upload a photo of yourself and a garment to see the magic happen.</p>
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8">
         {/* Input Area */}
         <div className="lg:col-span-5 space-y-6">
           {/* Person Upload */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative group hover:border-fuchsia-500/50 transition-colors">
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative group hover:border-fuchsia-500/50 transition-colors">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-white font-medium">
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-medium">
                 <User className="w-5 h-5 text-fuchsia-400" />
                 Your Photo
               </div>
               {personImage.preview && (
                 <button 
                   onClick={() => clearImage('person')}
-                  className="p-1 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
+                  className="p-1 hover:bg-[var(--card-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -211,18 +234,18 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe }) => {
             </div>
             
             <div 
-              className={`aspect-[3/4] rounded-xl overflow-hidden bg-black/40 flex items-center justify-center border-2 border-dashed ${personImage.preview ? 'border-transparent' : 'border-white/10 group-hover:border-white/20'} transition-all relative`}
+              className={`aspect-[3/4] rounded-xl overflow-hidden bg-[var(--input-bg)] flex items-center justify-center border-2 border-dashed ${personImage.preview ? 'border-transparent' : 'border-[var(--card-border)] group-hover:border-[var(--text-secondary)]'} transition-all relative`}
               onClick={() => !personImage.preview && personInputRef.current?.click()}
             >
               {personImage.preview ? (
                 <img src={personImage.preview} alt="Person" className="w-full h-full object-cover" />
               ) : (
                 <div className="text-center p-6 cursor-pointer">
-                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
-                    <Upload className="w-6 h-6 text-neutral-400" />
+                  <div className="w-12 h-12 rounded-full bg-[var(--card-bg)] flex items-center justify-center mx-auto mb-3">
+                    <Upload className="w-6 h-6 text-[var(--text-secondary)]" />
                   </div>
-                  <p className="text-sm text-neutral-400">Click to upload or drag & drop</p>
-                  <p className="text-xs text-neutral-600 mt-1">Recommended: Full body shot</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Click to upload or drag & drop</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">Recommended: Full body shot</p>
                 </div>
               )}
               <input 
@@ -236,44 +259,90 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe }) => {
           </div>
 
           {/* Garment Upload */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative group hover:border-purple-500/50 transition-colors">
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative group hover:border-purple-500/50 transition-colors">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-white font-medium">
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-medium">
                 <Shirt className="w-5 h-5 text-purple-400" />
                 Garment
               </div>
-              {garmentImage.preview && (
-                <button 
-                  onClick={() => clearImage('garment')}
-                  className="p-1 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {catalog && catalog.length > 0 && !garmentImage.preview && (
+                  <button
+                    onClick={() => setShowCatalog(!showCatalog)}
+                    className="text-xs bg-[var(--card-bg)] hover:bg-[var(--card-border)] text-[var(--text-primary)] px-2 py-1 rounded-md flex items-center gap-1 transition-colors"
+                  >
+                    <ShoppingBag className="w-3 h-3" />
+                    Select from Catalog
+                  </button>
+                )}
+                {garmentImage.preview && (
+                  <button 
+                    onClick={() => clearImage('garment')}
+                    className="p-1 hover:bg-[var(--card-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
             
-            <div 
-              className={`aspect-[3/4] rounded-xl overflow-hidden bg-black/40 flex items-center justify-center border-2 border-dashed ${garmentImage.preview ? 'border-transparent' : 'border-white/10 group-hover:border-white/20'} transition-all relative`}
-              onClick={() => !garmentImage.preview && garmentInputRef.current?.click()}
-            >
-              {garmentImage.preview ? (
-                <img src={garmentImage.preview} alt="Garment" className="w-full h-full object-cover" />
-              ) : (
-                <div className="text-center p-6 cursor-pointer">
-                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
-                    <Upload className="w-6 h-6 text-neutral-400" />
+            <div className="relative">
+              <AnimatePresence>
+                {showCatalog && catalog && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute inset-0 z-20 bg-neutral-900 rounded-xl border border-white/10 p-4 overflow-y-auto custom-scrollbar"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-medium text-white">Select a Product</span>
+                      <button onClick={() => setShowCatalog(false)} className="text-neutral-400 hover:text-white">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {catalog.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleCatalogSelect(item)}
+                          className="group relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all"
+                        >
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                            <span className="text-xs text-white font-medium truncate w-full text-left">{item.name}</span>
+                            <span className="text-[10px] text-neutral-300 text-left">{item.price}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div 
+                className={`aspect-[3/4] rounded-xl overflow-hidden bg-[var(--input-bg)] flex items-center justify-center border-2 border-dashed ${garmentImage.preview ? 'border-transparent' : 'border-[var(--card-border)] group-hover:border-[var(--text-secondary)]'} transition-all relative`}
+                onClick={() => !garmentImage.preview && garmentInputRef.current?.click()}
+              >
+                {garmentImage.preview ? (
+                  <img src={garmentImage.preview} alt="Garment" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center p-6 cursor-pointer">
+                    <div className="w-12 h-12 rounded-full bg-[var(--card-bg)] flex items-center justify-center mx-auto mb-3">
+                      <Upload className="w-6 h-6 text-[var(--text-secondary)]" />
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)]">Click to upload or drag & drop</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">Flat lay or ghost mannequin</p>
                   </div>
-                  <p className="text-sm text-neutral-400">Click to upload or drag & drop</p>
-                  <p className="text-xs text-neutral-600 mt-1">Flat lay or ghost mannequin</p>
-                </div>
-              )}
-              <input 
-                type="file" 
-                ref={garmentInputRef} 
-                onChange={(e) => handleFileChange(e, 'garment')} 
-                className="hidden" 
-                accept="image/*"
-              />
+                )}
+                <input 
+                  type="file" 
+                  ref={garmentInputRef} 
+                  onChange={(e) => handleFileChange(e, 'garment')} 
+                  className="hidden" 
+                  accept="image/*"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -303,6 +372,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe }) => {
                      className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg text-sm font-medium hover:bg-fuchsia-700 transition-colors shadow-lg shadow-fuchsia-500/20"
                      style={brandVibe ? { 
                        backgroundColor: brandVibe.accentColor, 
+                       color: getContrastText(brandVibe.accentColor),
                        boxShadow: `0 10px 15px -3px ${brandVibe.accentColor}40`
                      } : undefined}
                    >
@@ -345,6 +415,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe }) => {
               `}
               style={brandVibe && personImage.preview && garmentImage.preview && !isGenerating ? { 
                 backgroundImage: `linear-gradient(to right, ${brandVibe.accentColor}, ${brandVibe.colors[1]})`,
+                color: getContrastText(brandVibe.accentColor),
                 boxShadow: `0 10px 15px -3px ${brandVibe.accentColor}40`
               } : undefined}
             >

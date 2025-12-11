@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { BookOpen, Upload, Sparkles, Layout, Download, Loader2, Image as ImageIcon, X, FileText } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { BookOpen, Upload, Sparkles, Layout, Download, Loader2, Image as ImageIcon, X, FileText, ShoppingBag } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { jsPDF } from "jspdf";
-import { BrandVibe } from '../types';
+import { BrandVibe, CatalogItem } from '../types';
+import { getContrastText } from '../utils/color';
 
 // Initialize Gemini
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -16,13 +17,15 @@ interface ProductImage {
 
 interface LookbookModuleProps {
   brandVibe?: BrandVibe | null;
+  catalog?: CatalogItem[] | null;
 }
 
-export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe }) => {
+export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catalog }) => {
   const [products, setProducts] = useState<ProductImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPages, setGeneratedPages] = useState<string[]>([]);
   const [progress, setProgress] = useState<string>('');
+  const [showCatalog, setShowCatalog] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -32,6 +35,27 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe }) => 
         file
       }));
       setProducts(prev => [...prev, ...newProducts]);
+    }
+  };
+
+  const handleCatalogSelect = async (item: CatalogItem) => {
+    try {
+      // Convert URL to base64/File
+      const response = await fetch(item.imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], item.name, { type: blob.type });
+      
+      const newProduct: ProductImage = {
+        id: Math.random().toString(36).substr(2, 9),
+        url: URL.createObjectURL(blob), // Use blob URL for preview
+        file
+      };
+      
+      setProducts(prev => [...prev, newProduct]);
+      setShowCatalog(false);
+    } catch (err) {
+      console.error("Error loading catalog item:", err);
+      alert("Failed to load catalog item image.");
     }
   };
 
@@ -158,31 +182,77 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe }) => 
         {/* Sidebar / Controls */}
         <div className="lg:col-span-4 space-y-6">
           {/* Upload Area */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-fuchsia-400" />
-              Upload Collection
-            </h3>
-            
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {products.map((p) => (
-                <div key={p.id} className="aspect-square rounded-lg overflow-hidden relative group">
-                  <img src={p.url} alt="Product" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button 
-                      onClick={() => setProducts(products.filter(i => i.id !== p.id))}
-                      className="text-white hover:text-red-400"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Upload className="w-5 h-5 text-fuchsia-400" />
+                Upload Collection
+              </h3>
+              {catalog && catalog.length > 0 && (
+                <button
+                  onClick={() => setShowCatalog(!showCatalog)}
+                  className="text-xs bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded-md flex items-center gap-1 transition-colors"
+                >
+                  <ShoppingBag className="w-3 h-3" />
+                  Add from Catalog
+                </button>
+              )}
+            </div>
+
+            <div className="relative">
+              <AnimatePresence>
+                {showCatalog && catalog && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute inset-0 z-20 bg-neutral-900 rounded-xl border border-white/10 p-4 overflow-y-auto custom-scrollbar"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-medium text-white">Select a Product</span>
+                      <button onClick={() => setShowCatalog(false)} className="text-neutral-400 hover:text-white">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {catalog.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleCatalogSelect(item)}
+                          className="group relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all"
+                        >
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                            <span className="text-xs text-white font-medium truncate w-full text-left">{item.name}</span>
+                            <span className="text-[10px] text-neutral-300 text-left">{item.price}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {products.map((p) => (
+                  <div key={p.id} className="aspect-square rounded-lg overflow-hidden relative group">
+                    <img src={p.url} alt="Product" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button 
+                        onClick={() => setProducts(products.filter(i => i.id !== p.id))}
+                        className="text-white hover:text-red-400"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-              <label className="aspect-square rounded-lg border-2 border-dashed border-white/10 hover:border-white/30 transition-colors flex flex-col items-center justify-center cursor-pointer bg-white/5 hover:bg-white/10">
-                <Upload className="w-6 h-6 text-neutral-400 mb-1" />
-                <span className="text-xs text-neutral-500">Add</span>
-                <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
-              </label>
+                ))}
+                <label className="aspect-square rounded-lg border-2 border-dashed border-white/10 hover:border-white/30 transition-colors flex flex-col items-center justify-center cursor-pointer bg-white/5 hover:bg-white/10">
+                  <Upload className="w-6 h-6 text-neutral-400 mb-1" />
+                  <span className="text-xs text-neutral-500">Add</span>
+                  <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </div>
             </div>
 
             <button
@@ -191,6 +261,7 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe }) => 
               className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-fuchsia-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={brandVibe ? { 
                 backgroundImage: `linear-gradient(to right, ${brandVibe.accentColor}, ${brandVibe.colors[1]})`,
+                color: getContrastText(brandVibe.accentColor),
                 boxShadow: `0 10px 15px -3px ${brandVibe.accentColor}40`
               } : undefined}
             >
