@@ -9,7 +9,7 @@ import { saveCatalogToDB } from '../utils/db';
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface HeroProps {
-  onNavigate: (view: 'vto' | 'lookbook' | 'product-to-model') => void;
+  onNavigate: (view: 'vto' | 'lookbook' | 'product-to-model' | 'campaign') => void;
   setBrandVibe: (vibe: BrandVibe | null) => void;
   setCatalog?: (catalog: CatalogItem[]) => void;
   brandVibe: BrandVibe | null;
@@ -226,10 +226,21 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate, setBrandVibe, setCatalog
                     </div>
                     <h3 className="text-3xl font-bold text-white mb-2">For Your Customer</h3>
                     <p className="text-neutral-400 mb-6 line-clamp-2">
-                      Enable instant virtual try-on. Boost engagement and reduce returns with hyper-realistic visualization.
+                      Enable instant virtual try-on and hyper-personalized campaigns.
                     </p>
-                    <div className="flex items-center gap-2 text-white font-medium group-hover:translate-x-2 transition-transform">
-                      Enter VTO <ArrowRight className="w-4 h-4" />
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onNavigate('vto'); }}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm text-white backdrop-blur-md transition-colors"
+                      >
+                        Virtual Try-On
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onNavigate('campaign'); }}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm text-white backdrop-blur-md transition-colors"
+                      >
+                        Personalized Campaigns
+                      </button>
                     </div>
                   </div>
                 </div>

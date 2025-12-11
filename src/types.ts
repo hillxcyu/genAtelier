@@ -1,3 +1,16 @@
+export interface UserPersona {
+  id: string;
+  name: string;
+  age: number;
+  gender: 'Male' | 'Female' | 'Non-binary';
+  location: string;
+  stylePreferences: string[];
+  shoppingHistory: string[];
+  cartItems: CatalogItem[];
+  recommendedItems: CatalogItem[];
+  imageUrl: string;
+}
+
 export interface BrandVibe {
   colors: string[];
   font: 'sans' | 'serif' | 'mono';

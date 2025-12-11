@@ -6,8 +6,8 @@ import { getContrastText } from '../utils/color';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentView: 'hero' | 'vto' | 'ingestion' | 'lookbook' | 'product-to-model';
-  setCurrentView: (view: 'hero' | 'vto' | 'ingestion' | 'lookbook' | 'product-to-model') => void;
+  currentView: 'hero' | 'vto' | 'ingestion' | 'lookbook' | 'product-to-model' | 'campaign';
+  setCurrentView: (view: 'hero' | 'vto' | 'ingestion' | 'lookbook' | 'product-to-model' | 'campaign') => void;
   brandVibe: BrandVibe | null;
 }
 
@@ -18,6 +18,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurren
   const navItems = [
     { id: 'hero', label: 'Home', icon: Layers },
     { id: 'vto', label: 'Virtual Try-On', icon: Shirt },
+    { id: 'campaign', label: 'Campaigns', icon: Sparkles },
     { id: 'lookbook', label: 'Lookbook', icon: BookOpen },
     { id: 'product-to-model', label: 'Product to Model', icon: Camera },
     { id: 'ingestion', label: 'Brand Ingestion', icon: ShoppingBag },

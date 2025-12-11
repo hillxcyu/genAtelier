@@ -10,11 +10,12 @@ import { VTOModule } from './components/VTOModule';
 import { IngestionModule } from './components/IngestionModule';
 import { LookbookModule } from './components/LookbookModule';
 import { ProductToModelModule } from './components/ProductToModelModule';
+import { PersonalizedCampaignModule } from './components/PersonalizedCampaignModule';
 import { BrandVibe, CatalogItem } from './types';
 import { getCatalogFromDB } from './utils/db';
 
 export default function App() {
-  const [currentView, setCurrentView] = React.useState<'hero' | 'vto' | 'ingestion' | 'lookbook' | 'product-to-model'>('hero');
+  const [currentView, setCurrentView] = React.useState<'hero' | 'vto' | 'ingestion' | 'lookbook' | 'product-to-model' | 'campaign'>('hero');
   const [brandVibe, setBrandVibe] = useState<BrandVibe | null>(null);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
 
@@ -45,6 +46,7 @@ export default function App() {
       {currentView === 'vto' && <VTOModule brandVibe={brandVibe} catalog={catalog} />}
       {currentView === 'lookbook' && <LookbookModule brandVibe={brandVibe} catalog={catalog} />}
       {currentView === 'product-to-model' && <ProductToModelModule brandVibe={brandVibe} catalog={catalog} />}
+      {currentView === 'campaign' && <PersonalizedCampaignModule brandVibe={brandVibe} catalog={catalog} />}
       {currentView === 'ingestion' && <IngestionModule setBrandVibe={setBrandVibe} setCatalog={setCatalog} />}
     </Layout>
   );
