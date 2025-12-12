@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, Sparkles, RefreshCw, Shirt, User, X, ShoppingBag } from 'lucide-react';
+import { Upload, Sparkles, RefreshCw, Shirt, User, X, ShoppingBag, Loader2, CheckCircle } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { BrandVibe, CatalogItem } from '../types';
 import { getContrastText } from '../utils/color';
@@ -24,10 +24,81 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<{ item: CatalogItem; reason: string }[] | null>(null);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<CatalogItem[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
 
   const personInputRef = useRef<HTMLInputElement>(null);
   const garmentInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (garmentImage.preview) {
+      // Clear previous suggestions when garment changes
+      setSuggestions(null);
+      setSelectedSuggestions([]);
+      
+      if (catalog && catalog.length > 0) {
+        generateSuggestions();
+      }
+    } else {
+      setSuggestions(null);
+      setSelectedSuggestions([]);
+    }
+  }, [garmentImage.preview]);
+
+  const generateSuggestions = async () => {
+    if (!garmentImage.preview || !catalog || catalog.length === 0) return;
+    setIsSuggesting(true);
+    try {
+      const garmentBase64 = garmentImage.preview.split(',')[1];
+      const catalogList = catalog.map(c => ({ id: c.id, name: c.name, category: c.category }));
+      
+      const prompt = `
+        You are a professional fashion stylist. Analyze the provided garment image. 
+        From the following list of available catalog items, select 3 that would style best with this garment to create a complete look.
+        
+        CATALOG:
+        ${JSON.stringify(catalogList)}
+        
+        Return strictly a JSON object with this structure: 
+        { "suggestions": [{ "itemId": "string", "reason": "string" }] }
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: 'image/jpeg',
+                data: garmentBase64
+              }
+            }
+          ]
+        },
+        config: { responseMimeType: 'application/json' }
+      });
+
+      const text = response.text?.replace(/```json\n?|```/g, '').trim() || '{}';
+      const data = JSON.parse(text);
+
+      if (data.suggestions) {
+        const enrichedSuggestions = data.suggestions.map((s: any) => {
+          const item = catalog.find(c => c.id === s.itemId);
+          return item ? { item, reason: s.reason } : null;
+        }).filter(Boolean);
+        // @ts-ignore
+        setSuggestions(enrichedSuggestions);
+      }
+    } catch (err) {
+      console.error("Styling suggestion error:", err);
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'person' | 'garment') => {
     const file = e.target.files?.[0];
@@ -103,33 +174,58 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
       const personBase64 = personImage.preview.split(',')[1];
       const garmentBase64 = garmentImage.preview.split(',')[1];
 
-      // 1. Analyze the garment to understand what we are trying on
-      // We use a lighter model for quick analysis if needed, but here we'll just prompt the image generator directly
-      // with both images as reference.
-      
-      // Note: For "Nano Banana" style VTO, we ideally want to use a specific VTO pipeline.
-      // Since we are using Gemini, we will use the multimodal capabilities to "edit" the person image
-      // or generate a new one based on the person and the garment.
-      
-      const prompt = "Generate a high-quality, photorealistic image of the person from the first image wearing the garment from the second image. Maintain the person's pose, body shape, and skin tone exactly. Fit the garment naturally onto the person, respecting fabric drape and lighting. The output should be a fashion photography style shot.";
+      const parts: any[] = [
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: personBase64
+          }
+        },
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: garmentBase64
+          }
+        }
+      ];
+
+      let prompt = "Generate a high-quality, photorealistic image of the person from the first image wearing the garment from the second image. Maintain the person's pose, body shape, and skin tone exactly. Fit the garment naturally onto the person, respecting fabric drape and lighting. The output should be a fashion photography style shot.";
+
+      if (selectedSuggestions.length > 0) {
+        try {
+          const suggestionParts = await Promise.all(selectedSuggestions.map(async (item) => {
+            const response = await fetch(item.imageUrl);
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+            return {
+              inlineData: {
+                mimeType: blob.type || 'image/jpeg',
+                data: base64.split(',')[1]
+              }
+            };
+          }));
+          
+          parts.push(...suggestionParts);
+
+          prompt = `Generate a high-quality, photorealistic image of the person from the first image wearing the garment from the second image AND the ${selectedSuggestions.length} additional accessory/item(s) provided in the subsequent images. 
+          Maintain the person's pose, body shape, and skin tone exactly. 
+          Fit all garments and accessories naturally onto the person, respecting fabric drape, layering, and lighting. 
+          The output should be a cohesive fashion photography style shot showing the complete look.`;
+        } catch (e) {
+          console.error("Failed to load suggestion images", e);
+        }
+      }
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
         contents: {
           parts: [
             { text: prompt },
-            {
-              inlineData: {
-                mimeType: 'image/jpeg', // Assuming JPEG for simplicity, ideally detect from file
-                data: personBase64
-              }
-            },
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: garmentBase64
-              }
-            }
+            ...parts
           ]
         },
         config: {
@@ -266,15 +362,6 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                 Garment
               </div>
               <div className="flex items-center gap-2">
-                {catalog && catalog.length > 0 && !garmentImage.preview && (
-                  <button
-                    onClick={() => setShowCatalog(!showCatalog)}
-                    className="text-xs bg-[var(--card-bg)] hover:bg-[var(--card-border)] text-[var(--text-primary)] px-2 py-1 rounded-md flex items-center gap-1 transition-colors"
-                  >
-                    <ShoppingBag className="w-3 h-3" />
-                    Select from Catalog
-                  </button>
-                )}
                 {garmentImage.preview && (
                   <button 
                     onClick={() => clearImage('garment')}
@@ -287,65 +374,171 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
             </div>
             
             <div className="relative">
-              <AnimatePresence>
-                {showCatalog && catalog && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute inset-0 z-20 bg-neutral-900 rounded-xl border border-white/10 p-4 overflow-y-auto custom-scrollbar"
+              {!garmentImage.preview ? (
+                <div className="grid grid-cols-2 gap-4 h-[300px]">
+                  {/* Upload Button */}
+                  <div 
+                    className="rounded-xl border-2 border-dashed border-[var(--card-border)] hover:border-[var(--text-secondary)] bg-[var(--input-bg)] flex flex-col items-center justify-center cursor-pointer transition-all group"
+                    onClick={() => garmentInputRef.current?.click()}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-medium text-white">Select a Product</span>
-                      <button onClick={() => setShowCatalog(false)} className="text-neutral-400 hover:text-white">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {catalog.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleCatalogSelect(item)}
-                          className="group relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all"
-                        >
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                            <span className="text-xs text-white font-medium truncate w-full text-left">{item.name}</span>
-                            <span className="text-[10px] text-neutral-300 text-left">{item.price}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div 
-                className={`aspect-[3/4] rounded-xl overflow-hidden bg-[var(--input-bg)] flex items-center justify-center border-2 border-dashed ${garmentImage.preview ? 'border-transparent' : 'border-[var(--card-border)] group-hover:border-[var(--text-secondary)]'} transition-all relative`}
-                onClick={() => !garmentImage.preview && garmentInputRef.current?.click()}
-              >
-                {garmentImage.preview ? (
-                  <img src={garmentImage.preview} alt="Garment" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-center p-6 cursor-pointer">
-                    <div className="w-12 h-12 rounded-full bg-[var(--card-bg)] flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                       <Upload className="w-6 h-6 text-[var(--text-secondary)]" />
                     </div>
-                    <p className="text-sm text-[var(--text-secondary)]">Click to upload or drag & drop</p>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">Flat lay or ghost mannequin</p>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">Upload File</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">Flat lay / Ghost</p>
                   </div>
-                )}
-                <input 
-                  type="file" 
-                  ref={garmentInputRef} 
-                  onChange={(e) => handleFileChange(e, 'garment')} 
-                  className="hidden" 
-                  accept="image/*"
-                />
-              </div>
+
+                  {/* Catalog Button */}
+                  {catalog && catalog.length > 0 ? (
+                    <div 
+                      className="rounded-xl border-2 border-dashed border-[var(--card-border)] hover:border-fuchsia-500/50 bg-[var(--input-bg)] flex flex-col items-center justify-center cursor-pointer transition-all group"
+                      onClick={() => setShowCatalog(true)}
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <ShoppingBag className="w-6 h-6 text-fuchsia-400" />
+                      </div>
+                      <p className="text-sm font-medium text-[var(--text-primary)]">Browse Catalog</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">{catalog.length} items available</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border-2 border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/50 flex flex-col items-center justify-center opacity-50">
+                      <ShoppingBag className="w-6 h-6 text-[var(--text-secondary)] mb-2" />
+                      <p className="text-sm text-[var(--text-secondary)]">Catalog Empty</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[var(--input-bg)] relative border border-[var(--card-border)]">
+                  <img src={garmentImage.preview} alt="Garment" className="w-full h-full object-cover" />
+                </div>
+              )}
+              
+              <input 
+                type="file" 
+                ref={garmentInputRef} 
+                onChange={(e) => handleFileChange(e, 'garment')} 
+                className="hidden" 
+                accept="image/*"
+              />
             </div>
+
+            {/* AI Suggestions - Moved under Garment */}
+            <AnimatePresence>
+              {(suggestions || isSuggesting) && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 pt-4 border-t border-[var(--card-border)]"
+                >
+                  <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Sparkles className="w-3 h-3 text-fuchsia-400" />
+                    {isSuggesting ? "Getting Recommendations..." : "Complete the Look"}
+                  </h3>
+                  
+                  {isSuggesting ? (
+                    <div className="space-y-3 opacity-50">
+                       {[1, 2, 3].map((i) => (
+                         <div key={i} className="flex gap-3 p-2 rounded-lg animate-pulse">
+                           <div className="w-12 h-16 rounded bg-white/10" />
+                           <div className="flex-1 space-y-2 py-1">
+                             <div className="h-3 bg-white/10 rounded w-3/4" />
+                             <div className="h-2 bg-white/10 rounded w-1/2" />
+                           </div>
+                         </div>
+                       ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {suggestions?.map((s, i) => {
+                        const isSelected = selectedSuggestions.some(item => item.id === s.item.id);
+                        return (
+                          <motion.div 
+                            key={i} 
+                            whileHover={{ scale: 1.02 }}
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedSuggestions(prev => prev.filter(item => item.id !== s.item.id));
+                              } else {
+                                setSelectedSuggestions(prev => [...prev, s.item]);
+                              }
+                            }}
+                            className={`flex gap-3 p-2 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-fuchsia-500/10 border border-fuchsia-500/30' : 'hover:bg-[var(--input-bg)] border border-transparent'}`}
+                          >
+                            <div className="w-12 h-16 rounded overflow-hidden bg-white/5 flex-shrink-0 relative">
+                              <img src={s.item.imageUrl} alt={s.item.name} className="w-full h-full object-cover" />
+                              {isSelected && (
+                                <div className="absolute inset-0 bg-fuchsia-500/20 flex items-center justify-center">
+                                  <CheckCircle className="w-4 h-4 text-white drop-shadow-md" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-[var(--text-primary)] truncate">{s.item.name}</div>
+                              <div className="text-xs text-[var(--text-secondary)] mb-1">{s.item.price}</div>
+                              <div className="text-[10px] text-[var(--text-secondary)] leading-tight line-clamp-2 italic">"{s.reason}"</div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
+
+        {/* Catalog Drawer */}
+        <AnimatePresence>
+          {showCatalog && catalog && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowCatalog(false)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              />
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-neutral-900 border-l border-white/10 z-50 p-6 shadow-2xl overflow-y-auto"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
+                    Select Garment
+                  </h3>
+                  <button 
+                    onClick={() => setShowCatalog(false)}
+                    className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {catalog.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleCatalogSelect(item)}
+                      className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all text-left"
+                    >
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                        <span className="text-sm text-white font-medium truncate w-full">{item.name}</span>
+                        <span className="text-xs text-neutral-300">{item.price}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Action & Result Area */}
         <div className="lg:col-span-7 flex flex-col">
@@ -382,8 +575,27 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                </motion.div>
              ) : (
                <div className="text-center max-w-sm">
-                 <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                   <Sparkles className="w-10 h-10 text-white/20" />
+                 <div className="relative group inline-block mx-auto mb-6">
+                   {personImage.preview && garmentImage.preview && !isGenerating && (
+                     <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-600 to-purple-600 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+                   )}
+                   <button
+                     onClick={generateVTO}
+                     disabled={!personImage.preview || !garmentImage.preview || isGenerating}
+                     className={`
+                       relative w-20 h-20 rounded-full flex items-center justify-center transition-all
+                       ${!personImage.preview || !garmentImage.preview || isGenerating
+                         ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                         : 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-xl hover:scale-110 cursor-pointer'
+                       }
+                     `}
+                     style={brandVibe && personImage.preview && garmentImage.preview && !isGenerating ? { 
+                       backgroundImage: `linear-gradient(to right, ${brandVibe.accentColor}, ${brandVibe.colors[1]})`,
+                       color: getContrastText(brandVibe.accentColor),
+                     } : undefined}
+                   >
+                     <Sparkles className={`w-10 h-10 ${!personImage.preview || !garmentImage.preview ? 'text-white/20' : 'text-white'}`} />
+                   </button>
                  </div>
                  <h3 className="text-xl font-medium text-white mb-2">Ready to Transform?</h3>
                  <p className="text-neutral-500">
@@ -401,38 +613,6 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
              )}
           </div>
 
-          {/* Controls */}
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={generateVTO}
-              disabled={!personImage.preview || !garmentImage.preview || isGenerating}
-              className={`
-                px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 transition-all
-                ${!personImage.preview || !garmentImage.preview || isGenerating
-                  ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white hover:shadow-[0_0_40px_-10px_rgba(192,38,211,0.5)] hover:scale-105'
-                }
-              `}
-              style={brandVibe && personImage.preview && garmentImage.preview && !isGenerating ? { 
-                backgroundImage: `linear-gradient(to right, ${brandVibe.accentColor}, ${brandVibe.colors[1]})`,
-                color: getContrastText(brandVibe.accentColor),
-                boxShadow: `0 10px 15px -3px ${brandVibe.accentColor}40`
-              } : undefined}
-            >
-              {isGenerating ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Generate Try-On
-                </>
-              )}
-            </button>
-          </div>
-          
           {error && (
             <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-center text-sm">
               {error}
