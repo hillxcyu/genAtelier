@@ -19,13 +19,21 @@ ARG GOOGLE_CLOUD_LOCATION
 ENV GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION
 
 RUN npm run build
+RUN npm run build:server
 
 # Production Stage
-FROM nginx:alpine
+FROM node:18-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
+COPY package*.json ./
+# Install only production dependencies
+RUN npm install --omit=dev
+
+COPY --from=builder /app/dist-server ./dist-server
+COPY --from=builder /app/dist ./dist
+
+ENV PORT=8080
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "dist-server/index.js"]

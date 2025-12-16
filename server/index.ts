@@ -2,8 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
@@ -82,6 +88,19 @@ app.post('/api/generate-content', async (req, res) => {
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
+
+// Serve static files from the React app if available
+const distPath = path.join(__dirname, '../dist');
+const indexPath = path.join(distPath, 'index.html');
+
+if (fs.existsSync(indexPath)) {
+  app.use(express.static(distPath));
+  // The "catchall" handler: for any request that doesn't
+  // match one above, send back React's index.html file.
+  app.get('*', (req, res) => {
+    res.sendFile(indexPath);
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

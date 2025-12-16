@@ -1,5 +1,4 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -8,7 +7,10 @@
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "isolatedModules": false,
-    "types": ["node", "express", "cors"]
+    "types": ["node", "express", "cors"],
+    "outDir": "../dist-server",
+    "skipLibCheck": true,
+    "esModuleInterop": true
   },
   "include": ["./**/*.ts"],
   "exclude": ["../node_modules"]
