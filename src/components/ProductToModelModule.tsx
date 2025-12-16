@@ -1,13 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, Sparkles, RefreshCw, Shirt, User, X, Camera, Settings2, ShoppingBag } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { ai } from '../utils/genai';
 import { BrandVibe, CatalogItem } from '../types';
 import { getContrastText } from '../utils/color';
-
-// Initialize Gemini
-// We will re-init with the correct key inside the function, but this is for global scope if needed.
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface ImageState {
   file: File | null;
@@ -90,9 +86,6 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
       }
     }
 
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-    const ai = new GoogleGenAI({ apiKey: apiKey! });
-
     setIsGenerating(true);
     setError(null);
 
@@ -113,6 +106,7 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
           return await ai.models.generateContent({
             model: 'gemini-3-pro-image-preview',
             contents: {
+              role: 'user',
               parts: [
                 { text: prompt },
                 {
@@ -191,87 +185,123 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
 
       <div className="grid lg:grid-cols-12 gap-8">
         {/* Controls Area */}
-        <div className="lg:col-span-4 space-y-6">
-          
+        <div className="lg:col-span-4 space-y-6 relative">
+
+          {/* Catalog Drawer */}
+          <AnimatePresence>
+            {showCatalog && catalog && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowCatalog(false)}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+                />
+                <motion.div
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                  className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-neutral-900 border-r border-white/10 z-[70] p-6 shadow-2xl overflow-y-auto"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
+                      Select Product
+                    </h3>
+                    <button 
+                      onClick={() => setShowCatalog(false)}
+                      className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {catalog.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleCatalogSelect(item)}
+                        className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all text-left"
+                      >
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                          <span className="text-sm text-white font-medium truncate w-full">{item.name}</span>
+                          <span className="text-xs text-neutral-300">{item.price}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
           {/* Upload */}
-          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative">
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative group hover:border-fuchsia-500/50 transition-colors">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-medium">
                 <Shirt className="w-5 h-5 text-fuchsia-400" />
                 Product Source
-              </h3>
-              <div className="flex items-center gap-2">
-                {catalog && catalog.length > 0 && !productImage.preview && (
-                  <button
-                    onClick={() => setShowCatalog(!showCatalog)}
-                    className="text-xs bg-[var(--card-bg)] hover:bg-[var(--card-border)] text-[var(--text-primary)] px-2 py-1 rounded-md flex items-center gap-1 transition-colors"
-                  >
-                    <ShoppingBag className="w-3 h-3" />
-                    Catalog
-                  </button>
-                )}
-                {productImage.preview && (
-                  <button onClick={clearImage} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
               </div>
+              {productImage.preview && (
+                <button 
+                  onClick={clearImage}
+                  className="p-1 hover:bg-[var(--card-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-
+            
             <div className="relative">
-              <AnimatePresence>
-                {showCatalog && catalog && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute inset-0 z-20 bg-neutral-900 rounded-xl border border-white/10 p-4 overflow-y-auto custom-scrollbar"
+              {!productImage.preview ? (
+                <div className="grid grid-cols-2 gap-4 h-[300px]">
+                  {/* Upload Button */}
+                  <div 
+                    className="rounded-xl border-2 border-dashed border-[var(--card-border)] hover:border-[var(--text-secondary)] bg-[var(--input-bg)] flex flex-col items-center justify-center cursor-pointer transition-all group"
+                    onClick={() => productInputRef.current?.click()}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-medium text-white">Select a Product</span>
-                      <button onClick={() => setShowCatalog(false)} className="text-neutral-400 hover:text-white">
-                        <X className="w-4 h-4" />
-                      </button>
+                    <div className="w-12 h-12 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Upload className="w-6 h-6 text-[var(--text-secondary)]" />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {catalog.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleCatalogSelect(item)}
-                          className="group relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all"
-                        >
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                            <span className="text-xs text-white font-medium truncate w-full text-left">{item.name}</span>
-                            <span className="text-[10px] text-neutral-300 text-left">{item.price}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div 
-                className={`aspect-[3/4] rounded-xl overflow-hidden bg-[var(--input-bg)] flex items-center justify-center border-2 border-dashed ${productImage.preview ? 'border-transparent' : 'border-[var(--card-border)] hover:border-[var(--text-secondary)]'} transition-all cursor-pointer relative`}
-                onClick={() => !productImage.preview && productInputRef.current?.click()}
-              >
-                {productImage.preview ? (
-                  <img src={productImage.preview} alt="Product" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-center p-6">
-                    <Upload className="w-8 h-8 text-[var(--text-secondary)] mx-auto mb-3" />
-                    <p className="text-sm text-[var(--text-secondary)]">Upload Ghost Mannequin</p>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">Upload File</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">Flat lay / Ghost</p>
                   </div>
-                )}
-                <input 
-                  type="file" 
-                  ref={productInputRef} 
-                  onChange={handleFileChange} 
-                  className="hidden" 
-                  accept="image/*"
-                />
-              </div>
+
+                  {/* Catalog Button */}
+                  {catalog && catalog.length > 0 ? (
+                    <div 
+                      className="rounded-xl border-2 border-dashed border-[var(--card-border)] hover:border-fuchsia-500/50 bg-[var(--input-bg)] flex flex-col items-center justify-center cursor-pointer transition-all group"
+                      onClick={() => setShowCatalog(true)}
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <ShoppingBag className="w-6 h-6 text-fuchsia-400" />
+                      </div>
+                      <p className="text-sm font-medium text-[var(--text-primary)]">Browse Catalog</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">{catalog.length} items available</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border-2 border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/50 flex flex-col items-center justify-center opacity-50">
+                      <ShoppingBag className="w-6 h-6 text-[var(--text-secondary)] mb-2" />
+                      <p className="text-sm text-[var(--text-secondary)]">Catalog Empty</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[var(--input-bg)] relative border border-[var(--card-border)]">
+                  <img src={productImage.preview} alt="Product" className="w-full h-full object-cover" />
+                </div>
+              )}
+              
+              <input 
+                type="file" 
+                ref={productInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+                accept="image/*"
+              />
             </div>
           </div>
 
@@ -333,12 +363,7 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
           <button
             onClick={generateLifestyleShot}
             disabled={!productImage.preview || isGenerating}
-            className="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-fuchsia-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            style={brandVibe ? { 
-              backgroundImage: `linear-gradient(to right, ${brandVibe.accentColor}, ${brandVibe.colors[1]})`,
-              color: getContrastText(brandVibe.accentColor),
-              boxShadow: `0 10px 15px -3px ${brandVibe.accentColor}40`
-            } : undefined}
+            className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-fuchsia-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isGenerating ? (
               <>

@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, Sparkles, RefreshCw, Shirt, User, X, ShoppingBag, Loader2, CheckCircle } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { ai } from '../utils/genai';
 import { BrandVibe, CatalogItem } from '../types';
 import { getContrastText } from '../utils/color';
-
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface ImageState {
   file: File | null;
@@ -68,6 +65,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
+          role: 'user',
           parts: [
             { text: prompt },
             {
@@ -88,8 +86,8 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
         const enrichedSuggestions = data.suggestions.map((s: any) => {
           const item = catalog.find(c => c.id === s.itemId);
           return item ? { item, reason: s.reason } : null;
-        }).filter(Boolean);
-        // @ts-ignore
+        }).filter((s): s is { item: CatalogItem; reason: string } => s !== null);
+        
         setSuggestions(enrichedSuggestions);
       }
     } catch (err) {
@@ -163,9 +161,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
     // Re-initialize AI with the potentially new key.
     // The instructions state that for paid key selection, the key is in process.env.API_KEY.
     // We try that first, then fallback to the standard GEMINI_API_KEY.
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-    const ai = new GoogleGenAI({ apiKey: apiKey! });
-
+    
     setIsGenerating(true);
     setError(null);
 
@@ -223,6 +219,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
         contents: {
+          role: 'user',
           parts: [
             { text: prompt },
             ...parts
@@ -311,7 +308,59 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
 
       <div className="grid lg:grid-cols-12 gap-8">
         {/* Input Area */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-5 space-y-6 relative">
+          
+          {/* Catalog Drawer */}
+          <AnimatePresence>
+            {showCatalog && catalog && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowCatalog(false)}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+                />
+                <motion.div
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                  className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-neutral-900 border-r border-white/10 z-[70] p-6 shadow-2xl overflow-y-auto"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
+                      Select Garment
+                    </h3>
+                    <button 
+                      onClick={() => setShowCatalog(false)}
+                      className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {catalog.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleCatalogSelect(item)}
+                        className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all text-left"
+                      >
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                          <span className="text-sm text-white font-medium truncate w-full">{item.name}</span>
+                          <span className="text-xs text-neutral-300">{item.price}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
           {/* Person Upload */}
           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative group hover:border-fuchsia-500/50 transition-colors">
             <div className="flex items-center justify-between mb-4">
@@ -489,57 +538,6 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
           </div>
         </div>
 
-        {/* Catalog Drawer */}
-        <AnimatePresence>
-          {showCatalog && catalog && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowCatalog(false)}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-              />
-              <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-neutral-900 border-l border-white/10 z-50 p-6 shadow-2xl overflow-y-auto"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
-                    Select Garment
-                  </h3>
-                  <button 
-                    onClick={() => setShowCatalog(false)}
-                    className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  {catalog.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleCatalogSelect(item)}
-                      className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all text-left"
-                    >
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                        <span className="text-sm text-white font-medium truncate w-full">{item.name}</span>
-                        <span className="text-xs text-neutral-300">{item.price}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
         {/* Action & Result Area */}
         <div className="lg:col-span-7 flex flex-col">
           <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center relative overflow-hidden min-h-[600px]">
@@ -594,11 +592,14 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                        color: getContrastText(brandVibe.accentColor),
                      } : undefined}
                    >
-                     <Sparkles className={`w-10 h-10 ${!personImage.preview || !garmentImage.preview ? 'text-white/20' : 'text-white'}`} />
+                     <Sparkles className={`w-10 h-10 ${!personImage.preview || !garmentImage.preview || isGenerating ? 'text-white/20' : ''}`} />
                    </button>
                  </div>
                  <h3 className="text-xl font-medium text-white mb-2">Ready to Transform?</h3>
-                 <p className="text-neutral-500">
+                 <p 
+                   className="text-[var(--text-secondary)]"
+                   style={brandVibe ? { color: getContrastText(brandVibe.colors[0]) === '#ffffff' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' } : undefined}
+                 >
                    Upload both images to generate your virtual try-on. Our AI will analyze fabric, fit, and lighting to create a realistic result.
                  </p>
                </div>

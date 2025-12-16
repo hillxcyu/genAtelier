@@ -7,8 +7,14 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+    server: {
+      host: true, // Needed for Docker mapping
+      proxy: {
+        '/api': {
+          target: process.env.VITE_API_TARGET || 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
     },
     resolve: {
       alias: {

@@ -1,56 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, ShoppingBag, Sparkles, Send, Loader2, RefreshCw, Mail, MessageSquare, MapPin, Calendar, Tag } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { ai } from '../utils/genai';
 import { BrandVibe, CatalogItem, UserPersona } from '../types';
-
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { getContrastText } from '../utils/color';
+import { MOCK_PERSONAS, DEMO_CATALOG } from '../constants';
 
 interface PersonalizedCampaignModuleProps {
   brandVibe: BrandVibe | null;
   catalog: CatalogItem[];
 }
-
-// Mock Personas
-const MOCK_PERSONAS: UserPersona[] = [
-  {
-    id: '1',
-    name: 'Emma Chen',
-    age: 26,
-    gender: 'Female',
-    location: 'New York, NY',
-    stylePreferences: ['Minimalist', 'Sustainable', 'Neutral Tones'],
-    shoppingHistory: ['Silk Blouse', 'Wide Leg Trousers'],
-    cartItems: [], // Will be filled from catalog
-    recommendedItems: [], // Will be filled from catalog
-    imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=1000&auto=format&fit=crop'
-  },
-  {
-    id: '2',
-    name: 'Marcus Johnson',
-    age: 32,
-    gender: 'Male',
-    location: 'Austin, TX',
-    stylePreferences: ['Streetwear', 'Bold Colors', 'Oversized'],
-    shoppingHistory: ['Graphic Tee', 'Cargo Pants'],
-    cartItems: [], // Will be filled from catalog
-    recommendedItems: [], // Will be filled from catalog
-    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&auto=format&fit=crop'
-  },
-  {
-    id: '3',
-    name: 'Sophia Miller',
-    age: 45,
-    gender: 'Female',
-    location: 'London, UK',
-    stylePreferences: ['Classic', 'Elegant', 'Tailored'],
-    shoppingHistory: ['Trench Coat', 'Cashmere Sweater'],
-    cartItems: [], // Will be filled from catalog
-    recommendedItems: [], // Will be filled from catalog
-    imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop'
-  }
-];
 
 export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProps> = ({ brandVibe, catalog }) => {
   const [personas, setPersonas] = useState<UserPersona[]>(MOCK_PERSONAS);
@@ -65,13 +24,15 @@ export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProp
 
   // Hydrate personas with catalog items on mount
   useEffect(() => {
-    if (catalog.length > 0) {
+    const activeCatalog = (catalog && catalog.length > 0) ? catalog : DEMO_CATALOG;
+    
+    if (activeCatalog.length > 0) {
       const hydrated = MOCK_PERSONAS.map((p, i) => {
-        const cart = [catalog[i % catalog.length], catalog[(i + 1) % catalog.length]].filter(Boolean);
+        const cart = [activeCatalog[i % activeCatalog.length], activeCatalog[(i + 1) % activeCatalog.length]].filter(Boolean);
         // Simple recommendation: pick next 2 items not in cart
         const recommended = [
-          catalog[(i + 2) % catalog.length], 
-          catalog[(i + 3) % catalog.length]
+          activeCatalog[(i + 2) % activeCatalog.length], 
+          activeCatalog[(i + 3) % activeCatalog.length]
         ].filter(Boolean);
 
         return {
@@ -99,10 +60,6 @@ export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProp
       }
     }
 
-    // Re-initialize AI with the potentially new key.
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-    const ai = new GoogleGenAI({ apiKey: apiKey! });
-
     setIsGenerating(true);
     setGeneratedCampaign(null);
 
@@ -124,7 +81,7 @@ export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProp
 
       const copyResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: copyPrompt,
+        contents: { role: 'user', parts: [{ text: copyPrompt }] },
         config: { responseMimeType: 'application/json' }
       });
       
@@ -141,7 +98,7 @@ export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProp
 
       const imageResponse = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
-        contents: { parts: [{ text: imagePrompt }] },
+        contents: { role: 'user', parts: [{ text: imagePrompt }] },
         config: {
           imageConfig: {
             aspectRatio: "3:4",
@@ -196,6 +153,7 @@ export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProp
       const lookbookResponse = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
         contents: {
+          role: 'user',
           parts: [
             { text: lookbookPrompt },
             ...validLookbookParts

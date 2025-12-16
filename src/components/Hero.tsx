@@ -1,133 +1,32 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ArrowRight, Sparkles, Shirt, Camera, Loader2, TrendingUp, Layout as LayoutIcon } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { BrandVibe, CatalogItem } from '../types';
-import { saveCatalogToDB } from '../utils/db';
-
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { generateBrandAndCatalog } from '../utils/brandGenerator';
 
 interface HeroProps {
   onNavigate: (view: 'vto' | 'lookbook' | 'product-to-model' | 'campaign') => void;
   setBrandVibe: (vibe: BrandVibe | null) => void;
   setCatalog?: (catalog: CatalogItem[]) => void;
   brandVibe: BrandVibe | null;
+  showNotification?: (message: string, type: 'info' | 'success' | 'error') => void;
+  onAnalyze: (url: string) => Promise<void>;
+  isAnalyzing: boolean;
+  currentUrl: string;
+  setUrl: (url: string) => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ onNavigate, setBrandVibe, setCatalog, brandVibe }) => {
-  const [url, setUrl] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [progress, setProgress] = useState('');
-
-  const generateProductImage = async (product: any, mood: string) => {
-    try {
-      const prompt = `Professional e-commerce product photography of ${product.name} (${product.category}). Style: ${mood}. Clean, high quality, neutral background, fashion catalog style.`;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: prompt }] },
-      });
-
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-      return null;
-    } catch (e) {
-      console.error("Image gen failed", e);
-      return null;
-    }
-  };
-
-  const handleAnalyze = async () => {
-    if (!url) return;
-    setIsAnalyzing(true);
-    setProgress('Analyzing Brand DNA...');
-
-    try {
-      // 1. Analyze Brand & Get Products
-      const prompt = `Analyze the likely brand identity for a fashion retailer with the URL: "${url}". 
-      Return a JSON object with:
-      - name: The likely brand name.
-      - colors: array of 3-5 hex codes representing the brand palette.
-      - fonts: array of 2 font names likely used.
-      - fontCategory: One of "sans", "serif", "mono".
-      - mood: a short string describing the brand vibe (e.g., "Minimalist Luxury", "Bohemian Chic").
-      - keywords: array of 5 adjectives describing the style.
-      - products: A list of 15 representative products (3 categories, 5 items each) with 'name', 'category', and 'price'.
-      
-      If the URL is generic or unknown, infer a plausible high-end fashion style and product mix.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-      });
-
-      const data = JSON.parse(response.text || '{}');
-      
-      // 2. Set Brand Vibe
-      setBrandVibe({
-        colors: data.colors ? data.colors.slice(0, 3) : ['#000000', '#ffffff', '#333333'],
-        font: (data as any).fontCategory || 'sans',
-        name: data.name || url,
-        accentColor: data.colors ? (data.colors[1] || data.colors[0]) : '#c026d3',
-        mood: data.mood,
-        keywords: data.keywords,
-        fonts: data.fonts
-      });
-
-      // 3. Generate Catalog Images
-      if (setCatalog && data.products) {
-        const newCatalog: CatalogItem[] = [];
-        const batchSize = 3;
-        const products = data.products;
-        const mood = data.mood || "High-end Fashion";
-
-        for (let i = 0; i < products.length; i += batchSize) {
-          const batch = products.slice(i, i + batchSize);
-          setProgress(`Generating images ${i + 1}-${Math.min(i + batchSize, products.length)} of ${products.length}...`);
-          
-          const batchResults = await Promise.all(batch.map(async (p: any, batchIndex: number) => {
-            const globalIndex = i + batchIndex;
-            let imageUrl = await generateProductImage(p, mood);
-            
-            if (!imageUrl) {
-               imageUrl = `https://picsum.photos/seed/${p.name.replace(/\s/g, '')}/400/600`;
-            }
-
-            return {
-              id: `scraped-${globalIndex}`,
-              name: p.name,
-              category: p.category,
-              price: p.price,
-              imageUrl: imageUrl
-            };
-          }));
-          
-          newCatalog.push(...batchResults);
-        }
-        
-        setCatalog(newCatalog);
-        saveCatalogToDB(newCatalog).catch(err => console.error("Failed to save catalog to DB:", err));
-      }
-
-    } catch (error) {
-      console.error("Analysis failed", error);
-      // Fallback
-      setBrandVibe({
-        colors: ['#4a2c2c', '#d4b08c', '#1a1a1a'],
-        font: 'serif',
-        name: url,
-        accentColor: '#d4b08c'
-      });
-    } finally {
-      setIsAnalyzing(false);
-      setProgress('');
-    }
-  };
+export const Hero: React.FC<HeroProps> = ({
+  onNavigate,
+  setBrandVibe,
+  setCatalog,
+  brandVibe,
+  showNotification,
+  onAnalyze,
+  isAnalyzing,
+  currentUrl,
+  setUrl
+}) => {
 
   return (
     <div className="relative min-h-[calc(100vh-80px)] flex flex-col overflow-hidden">
@@ -164,15 +63,15 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate, setBrandVibe, setCatalog
                   <Search className="w-5 h-5 text-neutral-500 mr-3" />
                   <input 
                     type="text" 
-                    value={url}
+                    value={currentUrl}
                     onChange={(e) => setUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                    onKeyDown={(e) => e.key === 'Enter' && onAnalyze(currentUrl)}
                     placeholder="Enter Retailer URL (e.g., zara.com)"
                     className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-neutral-600 h-10"
                   />
                   <button 
-                    onClick={handleAnalyze}
-                    disabled={!url || isAnalyzing}
+                    onClick={() => onAnalyze(currentUrl)}
+                    disabled={!currentUrl || isAnalyzing}
                     className="px-6 py-2 bg-white text-neutral-950 rounded-full font-medium text-sm hover:bg-neutral-200 transition-colors disabled:opacity-50 flex items-center gap-2"
                   >
                     {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Begin'}
@@ -180,13 +79,6 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate, setBrandVibe, setCatalog
                 </div>
               </div>
               
-              <p className="mt-6 text-sm text-neutral-500">
-                {isAnalyzing ? (
-                  <span className="animate-pulse text-fuchsia-400">{progress || 'Analyzing Brand DNA...'}</span>
-                ) : (
-                  "Instantly calibrate our generative engine to your brand's aesthetic."
-                )}
-              </p>
             </motion.div>
           ) : (
             /* 2. The Split Gateway */
@@ -300,7 +192,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate, setBrandVibe, setCatalog
           
           <div className="flex gap-8 text-neutral-500 font-mono">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" style={{ color: brandVibe?.accentColor || '#d946ef' }} />
+              <TrendingUp className="w-4 h-4 text-fuchsia-500" />
               <span>Active Sessions: <span className="text-white">124</span></span>
             </div>
             <div className="hidden md:block">

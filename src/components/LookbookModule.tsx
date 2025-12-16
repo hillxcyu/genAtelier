@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Upload, Sparkles, Layout, Download, Loader2, Image as ImageIcon, X, FileText, ShoppingBag } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { jsPDF } from "jspdf";
+import { ai } from '../utils/genai';
 import { BrandVibe, CatalogItem } from '../types';
 import { getContrastText } from '../utils/color';
-
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface ProductImage {
   id: string;
@@ -118,6 +115,7 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
         const response = await ai.models.generateContent({
           model: 'gemini-3-pro-image-preview',
           contents: {
+            role: 'user',
             parts: [
               { text: prompt },
               ...imageParts
@@ -180,90 +178,122 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
 
       <div className="grid lg:grid-cols-12 gap-8">
         {/* Sidebar / Controls */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Upload Area */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Upload className="w-5 h-5 text-fuchsia-400" />
-                Upload Collection
-              </h3>
-              {catalog && catalog.length > 0 && (
-                <button
-                  onClick={() => setShowCatalog(!showCatalog)}
-                  className="text-xs bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded-md flex items-center gap-1 transition-colors"
-                >
-                  <ShoppingBag className="w-3 h-3" />
-                  Add from Catalog
-                </button>
-              )}
-            </div>
-
-            <div className="relative">
-              <AnimatePresence>
+        <div className="lg:col-span-4 space-y-6 relative">
+             <AnimatePresence>
                 {showCatalog && catalog && (
+                  <>
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute inset-0 z-20 bg-neutral-900 rounded-xl border border-white/10 p-4 overflow-y-auto custom-scrollbar"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowCatalog(false)}
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+                  />
+                  <motion.div
+                    initial={{ x: '-100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '-100%' }}
+                    transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                    className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-neutral-900 border-r border-white/10 z-[70] p-6 shadow-2xl overflow-y-auto"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-medium text-white">Select a Product</span>
-                      <button onClick={() => setShowCatalog(false)} className="text-neutral-400 hover:text-white">
-                        <X className="w-4 h-4" />
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
+                        Select Product
+                      </h3>
+                      <button 
+                        onClick={() => setShowCatalog(false)}
+                        className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
+                      >
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    
+                    <div className="grid grid-cols-2 gap-4">
                       {catalog.map((item) => (
                         <button
                           key={item.id}
                           onClick={() => handleCatalogSelect(item)}
-                          className="group relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all"
+                          className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all text-left"
                         >
                           <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                            <span className="text-xs text-white font-medium truncate w-full text-left">{item.name}</span>
-                            <span className="text-[10px] text-neutral-300 text-left">{item.price}</span>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                            <span className="text-sm text-white font-medium truncate w-full">{item.name}</span>
+                            <span className="text-xs text-neutral-300">{item.price}</span>
                           </div>
                         </button>
                       ))}
                     </div>
                   </motion.div>
+                  </>
                 )}
               </AnimatePresence>
+
+          {/* Upload Area */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative group hover:border-fuchsia-500/50 transition-colors">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Upload className="w-5 h-5 text-fuchsia-400" />
+                Collection
+              </h3>
+            </div>
+
+            <div className="relative">
               
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {products.map((p) => (
-                  <div key={p.id} className="aspect-square rounded-lg overflow-hidden relative group">
-                    <img src={p.url} alt="Product" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button 
-                        onClick={() => setProducts(products.filter(i => i.id !== p.id))}
-                        className="text-white hover:text-red-400"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                  {/* Upload Button */}
+                  <label className="rounded-xl border-2 border-dashed border-white/10 hover:border-white/30 bg-white/5 flex flex-col items-center justify-center cursor-pointer transition-all group py-8">
+                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Upload className="w-6 h-6 text-neutral-400" />
                     </div>
-                  </div>
-                ))}
-                <label className="aspect-square rounded-lg border-2 border-dashed border-white/10 hover:border-white/30 transition-colors flex flex-col items-center justify-center cursor-pointer bg-white/5 hover:bg-white/10">
-                  <Upload className="w-6 h-6 text-neutral-400 mb-1" />
-                  <span className="text-xs text-neutral-500">Add</span>
-                  <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
-                </label>
+                    <p className="text-sm font-medium text-white">Upload File</p>
+                    <p className="text-xs text-neutral-500 mt-1">Images</p>
+                    <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
+                  </label>
+
+                  {/* Catalog Button */}
+                  {catalog && catalog.length > 0 ? (
+                    <div 
+                      className="rounded-xl border-2 border-dashed border-white/10 hover:border-fuchsia-500/50 bg-white/5 flex flex-col items-center justify-center cursor-pointer transition-all group py-8"
+                      onClick={() => setShowCatalog(true)}
+                    >
+                      <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <ShoppingBag className="w-6 h-6 text-fuchsia-400" />
+                      </div>
+                      <p className="text-sm font-medium text-white">Browse Catalog</p>
+                      <p className="text-xs text-neutral-500 mt-1">{catalog.length} items available</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border-2 border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center opacity-50 py-8">
+                      <ShoppingBag className="w-6 h-6 text-neutral-400 mb-2" />
+                      <p className="text-sm text-neutral-500">Catalog Empty</p>
+                    </div>
+                  )}
               </div>
+
+              {products.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {products.map((p) => (
+                    <div key={p.id} className="aspect-square rounded-lg overflow-hidden relative group border border-white/10">
+                      <img src={p.url} alt="Product" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button 
+                          onClick={() => setProducts(products.filter(i => i.id !== p.id))}
+                          className="text-white hover:text-red-400"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button
               onClick={generateLookbook}
               disabled={products.length === 0 || isGenerating}
               className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-fuchsia-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={brandVibe ? { 
-                backgroundImage: `linear-gradient(to right, ${brandVibe.accentColor}, ${brandVibe.colors[1]})`,
-                color: getContrastText(brandVibe.accentColor),
-                boxShadow: `0 10px 15px -3px ${brandVibe.accentColor}40`
-              } : undefined}
             >
               {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
               Generate Campaign
