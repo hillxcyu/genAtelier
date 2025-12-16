@@ -69,19 +69,37 @@ Generates targeted marketing assets for specific user segments.
     GEMINI_API_KEY=your_api_key_here
     ```
 
-### Running the App
+### Deployment to Google Cloud Run
 
-Start the development server:
+Since this is a client-side application, the API key must be embedded during the **build process**.
 
-```bash
-npm run dev
-```
+1.  **Create the Docker repository (if not exists):**
+    ```bash
+    gcloud artifacts repositories create my-repo --repository-format=docker \
+    --location=us-central1 --description="Docker repository"
+    ```
 
-Open your browser and navigate to `http://localhost:3000`.
+2.  **Build the image:**
+    Replace `YOUR_API_KEY` with your actual Gemini API key.
+    ```bash
+    gcloud builds submit --tag us-central1-docker.pkg.dev/PROJECT_ID/my-repo/genfashion-atelier \
+      --build-arg GEMINI_API_KEY=YOUR_API_KEY .
+    ```
 
----
+3.  **Deploy to Cloud Run:**
+    ```bash
+    gcloud run deploy genfashion-atelier \
+      --image us-central1-docker.pkg.dev/PROJECT_ID/my-repo/genfashion-atelier \
+      --platform managed \
+      --region us-central1 \
+      --allow-unauthenticated
+    ```
 
-## 🏗️ Tech Stack
+**⚠️ Security Note:** Since the API key is embedded in the client-side code, it will be visible to users in the browser. You **MUST** restrict your API key in the Google Cloud Console:
+*   Go to **APIs & Services > Credentials**.
+*   Edit your API key.
+*   Set **Application restrictions** to **HTTP referrers (web sites)**.
+*   Add your Cloud Run URL (e.g., `https://genfashion-atelier-xyz.a.run.app/*`).
 
 *   **Frontend:** React, TypeScript, Vite
 *   **Styling:** Tailwind CSS, Framer Motion
