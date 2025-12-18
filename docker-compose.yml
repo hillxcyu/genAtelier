@@ -11,10 +11,13 @@ services:
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION}
       - GOOGLE_APPLICATION_CREDENTIALS=/tmp/adc.json
+      - SCRAPER_SERVICE_URL=http://scraper:4000/scrape
     volumes:
       - .:/app
       - /app/node_modules
       - ${HOME}/.config/gcloud/application_default_credentials.json:/tmp/adc.json:ro
+    depends_on:
+      - scraper
 
   frontend:
     build:
@@ -30,3 +33,10 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+  scraper:
+    build:
+      context: ./scraper-service
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"

@@ -102,7 +102,25 @@ app.post('/api/extract-brand', async (req, res) => {
     }
 
     console.log(`Scraping: ${url}`);
-    const scrapedData = await scrapeWebsite(url);
+    let scrapedData;
+    try {
+      scrapedData = await scrapeWebsite(url);
+    } catch (scrapeError: any) {
+      console.warn(`[Warning] Scraping failed completely: ${scrapeError.message}`);
+      console.log(`[Fallback] Proceeding with Semantic Inference (Hallucination) based on URL.`);
+      
+      // Construct fallback data
+      const domain = new URL(url).hostname.replace('www.', '');
+      scrapedData = {
+        url: url,
+        title: `${domain} (Inferred)`,
+        description: `Brand analysis for ${domain}`,
+        imageUrls: [],
+        textChunks: [],
+        jsonLdProducts: [],
+        htmlBody: `<!-- SCRAPING FAILED. FALLBACK MODE. URL: ${url} -->` 
+      };
+    }
     
     console.log(`Extracting with AI...`);
     const extractionResult = await processWithGemini(ai, scrapedData);
