@@ -19,6 +19,6 @@ The **Brand Ingestion** module is the entry point of the GenFashion Atelier. Its
     *   **Context Injection:** The extracted "Brand DNA" is passed as context to all subsequent generative tasks (VTO, Lookbooks, etc.), ensuring every AI-generated image feels "on-brand."
 
 ## Technical Implementation
-*   **Model:** `gemini-2.5-flash` for JSON extraction.
+*   **Model:** `gemini-3-flash-preview` for JSON extraction.
 *   **Image Generation:** `gemini-2.5-flash-image` is used to generate placeholder product images for the "scraped" catalog if real images aren't available.
 *   **State Management:** The `BrandVibe` object is stored in the global React state and persisted during the session.

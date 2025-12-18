@@ -17,6 +17,6 @@ The **Personalized Campaigns** module demonstrates the power of hyper-personaliz
     *   This creates a "Complete the Look" experience tailored to the individual's taste.
 
 ## Technical Implementation
-*   **Text Model:** `gemini-2.5-flash` for generating the email copy.
+*   **Text Model:** `gemini-3-flash-preview` for generating the email copy.
 *   **Image Model:** `gemini-3-pro-image-preview` for generating the high-fidelity persona images and the editorial lookbook layout.
 *   **API Key:** Requires a paid API key selection due to the use of the Pro model.

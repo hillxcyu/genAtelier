@@ -5,6 +5,8 @@ import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { scrapeWebsite } from './services/scraper.ts';
+import { processWithGemini } from './services/extractor.ts';
 
 dotenv.config();
 
@@ -86,6 +88,28 @@ app.post('/api/generate-content', async (req, res) => {
   } catch (error: any) {
     console.error('Error generating content:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+});
+
+app.post('/api/extract-brand', async (req, res) => {
+  console.log('Received request for /api/extract-brand');
+  try {
+    const { url } = req.body;
+    if (!url) {
+      res.status(400).json({ error: 'URL is required' });
+      return;
+    }
+
+    console.log(`Scraping: ${url}`);
+    const scrapedData = await scrapeWebsite(url);
+    
+    console.log(`Extracting with AI...`);
+    const extractionResult = await processWithGemini(ai, scrapedData);
+
+    res.json(extractionResult);
+  } catch (error: any) {
+    console.error('Extraction flow failed:', error);
+    res.status(500).json({ error: error.message || 'Failed to extract brand data' });
   }
 });
 

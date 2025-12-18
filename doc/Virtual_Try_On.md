@@ -22,7 +22,7 @@ The **Virtual Try-On** module allows customers to visualize how garments will lo
 
 ## Technical Implementation
 *   **VTO Model:** `gemini-3-pro-image-preview` is used for high-fidelity image generation, capable of handling complex multi-item prompts.
-*   **Styling Model:** `gemini-2.5-flash` analyzes the garment image and queries the JSON catalog to return structured recommendations.
+*   **Styling Model:** `gemini-3-flash-preview` analyzes the garment image and queries the JSON catalog to return structured recommendations.
 *   **Prompt Engineering:** 
     *   *Styling:* "Analyze this garment and pick 3 matching items from this JSON list..."
     *   *VTO:* "Generate a photorealistic image of person A wearing garment B and accessories C, D..."

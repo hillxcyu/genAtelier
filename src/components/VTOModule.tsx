@@ -63,7 +63,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: {
           role: 'user',
           parts: [
@@ -592,7 +592,10 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                        color: getContrastText(brandVibe.accentColor),
                      } : undefined}
                    >
-                     <Sparkles className={`w-10 h-10 ${!personImage.preview || !garmentImage.preview || isGenerating ? 'text-white/20' : ''}`} />
+                     <Sparkles 
+                       className={`w-10 h-10 ${!personImage.preview || !garmentImage.preview || isGenerating ? 'text-white/20' : ''}`} 
+                       style={brandVibe && personImage.preview && garmentImage.preview && !isGenerating ? { color: getContrastText(brandVibe.accentColor) } : undefined}
+                     />
                    </button>
                  </div>
                  <h3 className="text-xl font-medium text-white mb-2">Ready to Transform?</h3>

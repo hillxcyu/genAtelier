@@ -104,6 +104,6 @@ Since this is a client-side application, the API key must be embedded during the
 *   **Frontend:** React, TypeScript, Vite
 *   **Styling:** Tailwind CSS, Framer Motion
 *   **AI Models:**
-    *   `gemini-2.5-flash` (Text, Logic, JSON)
+    *   `gemini-3-flash-preview` (Text, Logic, JSON)
     *   `gemini-3-pro-image-preview` (High-Fidelity Image Generation)
 *   **Icons:** Lucide React
