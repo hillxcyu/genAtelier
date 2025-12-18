@@ -1,28 +1,17 @@
-# Build Stage
-FROM node:18-alpine AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
+# Install build dependencies
 COPY package*.json ./
 RUN npm install
 
 COPY . .
-
-# Accept the API key as a build argument
-ARG GEMINI_API_KEY
-ENV GEMINI_API_KEY=$GEMINI_API_KEY
-
-ARG GOOGLE_CLOUD_PROJECT
-ENV GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
-
-ARG GOOGLE_CLOUD_LOCATION
-ENV GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION
-
 RUN npm run build
 RUN npm run build:server
 
-# Production Stage
-FROM node:18-alpine
+# Production stage
+FROM node:22-slim
 
 WORKDIR /app
 

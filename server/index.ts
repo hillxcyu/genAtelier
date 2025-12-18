@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { scrapeWebsite } from './services/scraper.ts';
 import { processWithGemini } from './services/extractor.ts';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -110,6 +111,33 @@ app.post('/api/extract-brand', async (req, res) => {
   } catch (error: any) {
     console.error('Extraction flow failed:', error);
     res.status(500).json({ error: error.message || 'Failed to extract brand data' });
+  }
+});
+
+app.get('/api/proxy-image', async (req, res) => {
+  const imageUrl = req.query.url as string;
+
+  if (!imageUrl) {
+    return res.status(400).send('Image URL is required.');
+  }
+
+  try {
+    // Fetch the image from the external URL
+    const response = await axios.get(imageUrl, { 
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    
+    // Set appropriate headers to allow cross-origin access and correctly serve the image
+    res.set('Content-Type', response.headers['content-type']);
+    res.set('Access-Control-Allow-Origin', '*'); // Allow all origins
+    res.send(response.data);
+
+  } catch (error) {
+    console.error(`Error proxying image ${imageUrl}:`, error);
+    res.status(500).send('Failed to proxy image.');
   }
 });
 

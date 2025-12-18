@@ -50,8 +50,12 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
   const handleCatalogSelect = async (item: CatalogItem) => {
     try {
       setShowCatalog(false);
-      // Convert URL to base64
-      const response = await fetch(item.imageUrl);
+      // Convert URL to base64 via proxy
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(item.imageUrl)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to proxy image: ${response.statusText}`);
+      }
       const blob = await response.blob();
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -63,7 +67,7 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
       reader.readAsDataURL(blob);
     } catch (err) {
       console.error("Error loading catalog item:", err);
-      setError("Failed to load catalog item image.");
+      setError("Failed to load catalog item image via proxy.");
     }
   };
 
@@ -203,16 +207,16 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
                   animate={{ x: 0 }}
                   exit={{ x: '-100%' }}
                   transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                  className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-neutral-900 border-r border-white/10 z-[70] p-6 shadow-2xl overflow-y-auto"
+                  className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-[var(--card-bg)] border-r border-[var(--card-border)] z-[70] p-6 shadow-2xl overflow-y-auto"
                 >
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                       <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
                       Select Product
                     </h3>
                     <button 
                       onClick={() => setShowCatalog(false)}
-                      className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
+                      className="p-2 hover:bg-[var(--input-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -223,7 +227,7 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
                       <button
                         key={item.id}
                         onClick={() => handleCatalogSelect(item)}
-                        className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all text-left"
+                        className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-[var(--card-border)] hover:border-fuchsia-500/50 transition-all text-left"
                       >
                         <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
@@ -248,7 +252,7 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
               {productImage.preview && (
                 <button 
                   onClick={clearImage}
-                  className="p-1 hover:bg-[var(--card-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  className="p-1 hover:bg-[var(--input-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -288,7 +292,7 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
                       <p className="text-sm text-[var(--text-secondary)]">Catalog Empty</p>
                     </div>
                   )}
-                </div>
+              </div>
               ) : (
                 <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[var(--input-bg)] relative border border-[var(--card-border)]">
                   <img src={productImage.preview} alt="Product" className="w-full h-full object-cover" />
@@ -387,8 +391,8 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
 
         {/* Result Area */}
         <div className="lg:col-span-8">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-2 h-full min-h-[600px] flex flex-col">
-            <div className="flex-1 bg-neutral-900 rounded-xl m-2 overflow-hidden relative flex items-center justify-center">
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-2 h-full min-h-[600px] flex flex-col">
+            <div className="flex-1 bg-[var(--bg-primary)] rounded-xl m-2 overflow-hidden relative flex items-center justify-center">
               {/* Background Noise */}
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
 
@@ -411,11 +415,11 @@ export const ProductToModelModule: React.FC<ProductToModelModuleProps> = ({ bran
                 </motion.div>
               ) : (
                 <div className="text-center max-w-sm p-6">
-                  <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Camera className="w-10 h-10 text-white/20" />
+                  <div className="w-20 h-20 bg-[var(--input-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Camera className="w-10 h-10 text-[var(--text-secondary)] opacity-50" />
                   </div>
-                  <h3 className="text-xl font-medium text-white mb-2">No Image Generated Yet</h3>
-                  <p className="text-neutral-500">
+                  <h3 className="text-xl font-medium text-[var(--text-primary)] mb-2">No Image Generated Yet</h3>
+                  <p className="text-[var(--text-secondary)]">
                     Upload a product image and select your model preferences to generate a professional lifestyle shot.
                   </p>
                 </div>

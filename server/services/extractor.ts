@@ -30,6 +30,14 @@ export async function processWithGemini(ai: GoogleGenAI, scrapedData: ScrapedDat
     Website Title: ${scrapedData.title}
     Description: ${scrapedData.description}
     
+    STRUCTURED PRODUCT DATA (JSON-LD or Visual Cards) [High Confidence]:
+    ${JSON.stringify(scrapedData.jsonLdProducts, null, 2)}
+
+    RAW HTML BODY FOR PRODUCT EXTRACTION:
+    \`\`\`html
+    ${scrapedData.htmlBody}
+    \`\`\`
+
     Image URLs (Sample):
     ${scrapedData.imageUrls.slice(0, 15).join('\n')}
     
@@ -38,7 +46,12 @@ export async function processWithGemini(ai: GoogleGenAI, scrapedData: ScrapedDat
     
     Task:
     1. Identify the Brand Identity (Name, Colors, Fonts, Mood).
-    2. Extract a list of representative products found in the content. Map the 'imageUrl' to the most likely matching URL from the provided list if possible. If no direct match, leave it empty or map to a generic placeholder logic on the client.
+    2. Extract a list of representative products.
+       IMPORTANT: PRIORITY RULE
+       - If "STRUCTURED PRODUCT DATA" is available, USE IT as the primary source of truth for product names, prices, and images. Extract from it.
+       - If not, then carefully analyze the "RAW HTML BODY" to find repeated product card structures. Extract product name, price, and the absolute URL of the primary product image from these cards.
+       - Only use the raw "Text Content" and "Image URLs" to fill in gaps or if no structured data can be found from the HTML.
+       - Ensure product images are mapped correctly and are absolute URLs.
     
     Return a STRICT JSON object with this schema:
     {

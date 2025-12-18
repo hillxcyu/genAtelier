@@ -116,8 +116,12 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
   const handleCatalogSelect = async (item: CatalogItem) => {
     try {
       setShowCatalog(false);
-      // Convert URL to base64
-      const response = await fetch(item.imageUrl);
+      // Convert URL to base64 via proxy
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(item.imageUrl)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to proxy image: ${response.statusText}`);
+      }
       const blob = await response.blob();
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -129,7 +133,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
       reader.readAsDataURL(blob);
     } catch (err) {
       console.error("Error loading catalog item:", err);
-      setError("Failed to load catalog item image.");
+      setError("Failed to load catalog item image via proxy.");
     }
   };
 
@@ -190,7 +194,8 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
       if (selectedSuggestions.length > 0) {
         try {
           const suggestionParts = await Promise.all(selectedSuggestions.map(async (item) => {
-            const response = await fetch(item.imageUrl);
+            const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(item.imageUrl)}`;
+            const response = await fetch(proxyUrl);
             const blob = await response.blob();
             const base64 = await new Promise<string>((resolve) => {
               const reader = new FileReader();
@@ -326,16 +331,16 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                   animate={{ x: 0 }}
                   exit={{ x: '-100%' }}
                   transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                  className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-neutral-900 border-r border-white/10 z-[70] p-6 shadow-2xl overflow-y-auto"
+                  className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-[var(--card-bg)] border-r border-[var(--card-border)] z-[70] p-6 shadow-2xl overflow-y-auto"
                 >
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                       <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
                       Select Garment
                     </h3>
                     <button 
                       onClick={() => setShowCatalog(false)}
-                      className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors"
+                      className="p-2 hover:bg-[var(--input-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -346,7 +351,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                       <button
                         key={item.id}
                         onClick={() => handleCatalogSelect(item)}
-                        className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 hover:border-fuchsia-500/50 transition-all text-left"
+                        className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-[var(--card-border)] hover:border-fuchsia-500/50 transition-all text-left"
                       >
                         <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
@@ -480,7 +485,7 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                   exit={{ opacity: 0, height: 0 }}
                   className="mt-4 pt-4 border-t border-[var(--card-border)]"
                 >
-                  <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
                     <Sparkles className="w-3 h-3 text-fuchsia-400" />
                     {isSuggesting ? "Getting Recommendations..." : "Complete the Look"}
                   </h3>
@@ -488,11 +493,11 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                   {isSuggesting ? (
                     <div className="space-y-3 opacity-50">
                        {[1, 2, 3].map((i) => (
-                         <div key={i} className="flex gap-3 p-2 rounded-lg animate-pulse">
-                           <div className="w-12 h-16 rounded bg-white/10" />
+                         <div key={i} className="flex gap-3 p-2 rounded-lg animate-pulse bg-[var(--input-bg)] border border-[var(--card-border)]">
+                           <div className="w-12 h-16 rounded bg-[var(--card-bg)]" />
                            <div className="flex-1 space-y-2 py-1">
-                             <div className="h-3 bg-white/10 rounded w-3/4" />
-                             <div className="h-2 bg-white/10 rounded w-1/2" />
+                             <div className="h-3 bg-[var(--card-bg)] rounded w-3/4" />
+                             <div className="h-2 bg-[var(--card-bg)] rounded w-1/2" />
                            </div>
                          </div>
                        ))}
@@ -512,10 +517,10 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                                 setSelectedSuggestions(prev => [...prev, s.item]);
                               }
                             }}
-                            className={`flex gap-3 p-2 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-fuchsia-500/10 border border-fuchsia-500/30' : 'hover:bg-[var(--input-bg)] border border-transparent'}`}
+                            className={`flex gap-3 p-2 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-fuchsia-500/10 border-fuchsia-500 ring-1 ring-fuchsia-500/50' : 'bg-[var(--input-bg)] border-[var(--card-border)] hover:border-[var(--text-secondary)]'}`}
                           >
-                            <div className="w-12 h-16 rounded overflow-hidden bg-white/5 flex-shrink-0 relative">
-                              <img src={s.item.imageUrl} alt={s.item.name} className="w-full h-full object-cover" />
+                            <div className="w-12 h-16 rounded overflow-hidden bg-[var(--card-bg)] flex-shrink-0 relative">
+                              <img src={s.item.imageUrl} alt={s.item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                               {isSelected && (
                                 <div className="absolute inset-0 bg-fuchsia-500/20 flex items-center justify-center">
                                   <CheckCircle className="w-4 h-4 text-white drop-shadow-md" />
@@ -523,9 +528,9 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-[var(--text-primary)] truncate">{s.item.name}</div>
-                              <div className="text-xs text-[var(--text-secondary)] mb-1">{s.item.price}</div>
-                              <div className="text-[10px] text-[var(--text-secondary)] leading-tight line-clamp-2 italic">"{s.reason}"</div>
+                              <div className="text-sm font-medium truncate" style={{ color: brandVibe ? getContrastText(brandVibe.colors[0]) : undefined }}>{s.item.name}</div>
+                              <div className="text-xs mb-1" style={{ color: brandVibe ? getContrastText(brandVibe.colors[0]) : undefined }}>{s.item.price}</div>
+                              <div className="text-[10px] leading-tight line-clamp-2 italic" style={{ color: brandVibe ? getContrastText(brandVibe.colors[0]) : undefined }}>"{s.reason}"</div>
                             </div>
                           </motion.div>
                         );
