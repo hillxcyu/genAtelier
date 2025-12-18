@@ -528,9 +528,9 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate" style={{ color: brandVibe ? getContrastText(brandVibe.colors[0]) : undefined }}>{s.item.name}</div>
-                              <div className="text-xs mb-1" style={{ color: brandVibe ? getContrastText(brandVibe.colors[0]) : undefined }}>{s.item.price}</div>
-                              <div className="text-[10px] leading-tight line-clamp-2 italic" style={{ color: brandVibe ? getContrastText(brandVibe.colors[0]) : undefined }}>"{s.reason}"</div>
+                              <div className="text-sm font-medium truncate text-[var(--text-primary)]">{s.item.name}</div>
+                              <div className="text-xs mb-1 text-[var(--text-secondary)]">{s.item.price}</div>
+                              <div className="text-[10px] leading-tight line-clamp-2 italic text-[var(--text-secondary)]">"{s.reason}"</div>
                             </div>
                           </motion.div>
                         );
@@ -567,9 +567,9 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                      onClick={handleShare}
                      className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg text-sm font-medium hover:bg-fuchsia-700 transition-colors shadow-lg shadow-fuchsia-500/20"
                      style={brandVibe ? { 
-                       backgroundColor: brandVibe.accentColor, 
-                       color: getContrastText(brandVibe.accentColor),
-                       boxShadow: `0 10px 15px -3px ${brandVibe.accentColor}40`
+                       backgroundColor: brandVibe.palette.accent, 
+                       color: getContrastText(brandVibe.palette.accent),
+                       boxShadow: `0 10px 15px -3px ${brandVibe.palette.accent}40`
                      } : undefined}
                    >
                      Share Look
@@ -593,21 +593,18 @@ export const VTOModule: React.FC<VTOModuleProps> = ({ brandVibe, catalog }) => {
                        }
                      `}
                      style={brandVibe && personImage.preview && garmentImage.preview && !isGenerating ? { 
-                       backgroundImage: `linear-gradient(to right, ${brandVibe.accentColor}, ${brandVibe.colors[1]})`,
-                       color: getContrastText(brandVibe.accentColor),
+                       backgroundImage: `linear-gradient(to right, ${brandVibe.palette.accent}, ${brandVibe.palette.secondary})`,
+                       color: getContrastText(brandVibe.palette.accent),
                      } : undefined}
                    >
                      <Sparkles 
                        className={`w-10 h-10 ${!personImage.preview || !garmentImage.preview || isGenerating ? 'text-white/20' : ''}`} 
-                       style={brandVibe && personImage.preview && garmentImage.preview && !isGenerating ? { color: getContrastText(brandVibe.accentColor) } : undefined}
+                       style={brandVibe && personImage.preview && garmentImage.preview && !isGenerating ? { color: getContrastText(brandVibe.palette.accent) } : undefined}
                      />
                    </button>
                  </div>
-                 <h3 className="text-xl font-medium text-white mb-2">Ready to Transform?</h3>
-                 <p 
-                   className="text-[var(--text-secondary)]"
-                   style={brandVibe ? { color: getContrastText(brandVibe.colors[0]) === '#ffffff' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' } : undefined}
-                 >
+                 <h3 className="text-xl font-medium text-[var(--text-primary)] mb-2">Ready to Transform?</h3>
+                 <p className="text-[var(--text-secondary)]">
                    Upload both images to generate your virtual try-on. Our AI will analyze fabric, fit, and lighting to create a realistic result.
                  </p>
                </div>

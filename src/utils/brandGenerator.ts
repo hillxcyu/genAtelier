@@ -67,9 +67,14 @@ export async function generateBrandAndCatalog(
     // Create Brand Vibe
     const brandVibe: BrandVibe = {
       name: data.brandVibe.name || url,
-      colors: data.brandVibe.colors || ['#000000', '#ffffff', '#333333'],
+      palette: data.brandVibe.palette || {
+          primary: '#000000',
+          secondary: '#333333',
+          accent: '#c026d3',
+          background: '#ffffff',
+          text: '#000000'
+      },
       font: data.brandVibe.fontCategory || 'sans',
-      accentColor: data.brandVibe.colors ? (data.brandVibe.colors[1] || data.brandVibe.colors[0]) : '#c026d3',
       mood: data.brandVibe.mood,
       keywords: data.brandVibe.keywords,
       fonts: data.brandVibe.fonts

@@ -2,9 +2,17 @@ import { GoogleGenAI } from '@google/genai';
 import type { ScrapedData } from './scraper.ts';
 
 // Re-define interfaces to avoid shared code complexity for this prototype
+interface BrandPalette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  text: string;
+}
+
 interface BrandVibe {
   name: string;
-  colors: string[];
+  palette: BrandPalette;
   fonts: string[];
   fontCategory?: 'sans' | 'serif' | 'mono';
   mood: string;
@@ -45,7 +53,13 @@ export async function processWithGemini(ai: GoogleGenAI, scrapedData: ScrapedDat
     ${scrapedData.textChunks.slice(0, 50).join(' | ')}
     
     Task:
-    1. Identify the Brand Identity (Name, Colors, Fonts, Mood).
+    1. Identify the Brand Identity (Name, Palette, Fonts, Mood).
+       - **Palette Extraction:** Identify 5 distinct roles:
+         - **primary**: The main brand color (e.g., header, logo).
+         - **secondary**: A supporting color.
+         - **accent**: High-contrast color for buttons/CTAs.
+         - **background**: The dominant page background (usually white, off-white, or black).
+         - **text**: The dominant text color (ensure good contrast with background).
     2. Extract **all visible** product items from the RAW HTML BODY. 
        IMPORTANT: PRIORITY RULE
        - If "STRUCTURED PRODUCT DATA" is available, USE IT as the primary source of truth for product names, prices, and images. Extract from it.
@@ -63,7 +77,13 @@ export async function processWithGemini(ai: GoogleGenAI, scrapedData: ScrapedDat
     Return a STRICT JSON object with this schema:
     {
       "name": "string",
-      "colors": ["#hex", "#hex", "#hex"],
+      "palette": {
+        "primary": "#hex",
+        "secondary": "#hex",
+        "accent": "#hex",
+        "background": "#hex",
+        "text": "#hex"
+      },
       "fonts": ["string", "string"],
       "fontCategory": "sans" | "serif" | "mono",
       "mood": "string",
@@ -87,7 +107,13 @@ export async function processWithGemini(ai: GoogleGenAI, scrapedData: ScrapedDat
     return {
       brandVibe: {
         name: data.name || scrapedData.title,
-        colors: data.colors || [],
+        palette: data.palette || { 
+            primary: '#000000', 
+            secondary: '#333333', 
+            accent: '#000000', 
+            background: '#ffffff', 
+            text: '#000000' 
+        },
         fonts: data.fonts || [],
         fontCategory: data.fontCategory || 'sans',
         mood: data.mood || 'Modern',

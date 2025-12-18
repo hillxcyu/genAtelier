@@ -90,7 +90,7 @@ export const Hero: React.FC<HeroProps> = ({
             >
               <div className="text-center mb-12">
                 <h2 className="text-3xl font-light text-white mb-2">
-                  Welcome, <span className="capitalize font-bold" style={{ color: brandVibe.accentColor }}>{brandVibe.name}</span>
+                  Welcome, <span className="capitalize font-bold" style={{ color: brandVibe.palette.accent }}>{brandVibe.name}</span>
                 </h2>
                 <p className="text-neutral-400">Select your workspace</p>
               </div>
@@ -98,9 +98,9 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
                 {/* Option A: The Fitting Room */}
                 <div 
+                  className="group relative h-[400px] rounded-3xl overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all cursor-pointer"
                   onClick={() => onNavigate('vto')}
-                  className="group relative h-[400px] rounded-3xl overflow-hidden cursor-pointer border border-white/10 hover:border-fuchsia-500/50 transition-all"
-                  style={{ borderColor: `${brandVibe.accentColor}40` }}
+                  style={{ borderColor: `${brandVibe.palette.accent}40` }}
                 >
                   <div className="absolute inset-0 bg-neutral-900 group-hover:scale-105 transition-transform duration-700">
                     <img 
@@ -112,7 +112,7 @@ export const Hero: React.FC<HeroProps> = ({
                   </div>
                   
                   <div className="absolute bottom-0 left-0 right-0 p-8">
-                    <div className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: brandVibe.accentColor }}>
+                    <div className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: brandVibe.palette.accent }}>
                       <Shirt className="w-4 h-4" />
                       THE FITTING ROOM
                     </div>
@@ -140,7 +140,7 @@ export const Hero: React.FC<HeroProps> = ({
                 {/* Option B: The Studio */}
                 <div 
                   className="group relative h-[400px] rounded-3xl overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all"
-                  style={{ borderColor: `${brandVibe.accentColor}40` }}
+                  style={{ borderColor: `${brandVibe.palette.accent}40` }}
                 >
                   <div className="absolute inset-0 bg-neutral-900 group-hover:scale-105 transition-transform duration-700">
                      <img 
@@ -152,7 +152,7 @@ export const Hero: React.FC<HeroProps> = ({
                   </div>
                   
                   <div className="absolute bottom-0 left-0 right-0 p-8">
-                    <div className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: brandVibe.accentColor }}>
+                    <div className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: brandVibe.palette.accent }}>
                       <LayoutIcon className="w-4 h-4" />
                       THE STUDIO
                     </div>

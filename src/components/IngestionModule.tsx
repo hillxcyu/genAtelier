@@ -71,14 +71,15 @@ export const IngestionModule: React.FC<IngestionModuleProps> = ({
               </div>
               <h3 className="text-lg font-semibold text-[var(--text-primary)]">Brand Palette</h3>
             </div>
-            <div className="flex gap-4">
-              {brandVibe.colors.map((color, i) => (
+            <div className="flex gap-4 flex-wrap">
+              {Object.entries(brandVibe.palette).map(([role, color], i) => (
                 <div key={i} className="space-y-2 text-center">
                   <div 
                     className="w-16 h-16 rounded-xl shadow-lg border border-white/10"
                     style={{ backgroundColor: color }}
                   />
-                  <div className="text-xs font-mono text-[var(--text-secondary)]">{color}</div>
+                  <div className="text-xs font-mono text-[var(--text-secondary)] uppercase">{role}</div>
+                  <div className="text-[10px] font-mono text-[var(--text-tertiary)]">{color}</div>
                 </div>
               ))}
             </div>

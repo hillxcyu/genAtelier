@@ -11,11 +11,18 @@ export interface UserPersona {
   imageUrl: string;
 }
 
+export interface BrandPalette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  text: string;
+}
+
 export interface BrandVibe {
-  colors: string[];
+  palette: BrandPalette;
   font: 'sans' | 'serif' | 'mono';
   name: string;
-  accentColor: string;
   mood?: string;
   keywords?: string[];
   fonts?: string[];

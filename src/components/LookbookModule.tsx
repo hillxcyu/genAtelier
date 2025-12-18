@@ -118,8 +118,8 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
         // Construct Prompt
         const vibeContext = brandVibe ? `
           Brand Identity: ${brandVibe.name}
-          Color Palette: ${brandVibe.colors.join(', ')}
-          Accent Color: ${brandVibe.accentColor}
+          Color Palette: Primary: ${brandVibe.palette.primary}, Secondary: ${brandVibe.palette.secondary}, Background: ${brandVibe.palette.background}, Text: ${brandVibe.palette.text}
+          Accent Color: ${brandVibe.palette.accent}
           Font Style: ${brandVibe.font}
         ` : 'Style: High-end, minimalist fashion editorial.';
 
@@ -391,7 +391,7 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
                 <button 
                   onClick={handleExportPDF}
                   className="text-xs flex items-center gap-1 text-fuchsia-400 hover:text-fuchsia-300"
-                  style={brandVibe ? { color: brandVibe.accentColor } : undefined}
+                  style={brandVibe ? { color: brandVibe.palette.accent } : undefined}
                 >
                   <Download className="w-3 h-3" />
                   Export PDF

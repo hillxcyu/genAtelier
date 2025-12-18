@@ -66,120 +66,139 @@ export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProp
     try {
       const targetItem = selectedPersona.cartItems[0];
       
-      // 1. Generate Ad Copy
-      const copyPrompt = `
-        Write a personalized email marketing campaign for a fashion brand named "${brandVibe.name}".
-        Target Audience: ${selectedPersona.name}, ${selectedPersona.age} years old, ${selectedPersona.gender}, lives in ${selectedPersona.location}.
-        Style Preferences: ${selectedPersona.stylePreferences.join(', ')}.
-        Product in Cart: ${targetItem.name} (${targetItem.category}).
-        Brand Vibe: ${brandVibe.mood} (${brandVibe.keywords?.join(', ')}).
+      // Define concurrent tasks
+      
+      // 1. Copy Generation Task
+      const generateCopy = async () => {
+        const copyPrompt = `
+          Write a personalized email marketing campaign for a fashion brand named "${brandVibe.name}".
+          Target Audience: ${selectedPersona.name}, ${selectedPersona.age} years old, ${selectedPersona.gender}, lives in ${selectedPersona.location}.
+          Style Preferences: ${selectedPersona.stylePreferences.join(', ')}.
+          Product in Cart: ${targetItem.name} (${targetItem.category}).
+          Brand Vibe: ${brandVibe.mood} (${brandVibe.keywords?.join(', ')}).
+          
+          Return a JSON object with:
+          - subject: Catchy email subject line.
+          - body: A short, persuasive email body text (max 50 words).
+        `;
+
+        const copyResponse = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: { role: 'user', parts: [{ text: copyPrompt }] },
+          config: { responseMimeType: 'application/json' }
+        });
         
-        Return a JSON object with:
-        - subject: Catchy email subject line.
-        - body: A short, persuasive email body text (max 50 words).
-      `;
+        return JSON.parse(copyResponse.text || '{}');
+      };
 
-      const copyResponse = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: { role: 'user', parts: [{ text: copyPrompt }] },
-        config: { responseMimeType: 'application/json' }
-      });
-      
-      const copyData = JSON.parse(copyResponse.text || '{}');
-
-      // 2. Generate Personalized Image
-      // We will use the user's image and the product image to generate a VTO-like shot
-      const imagePrompt = `
-        Fashion photography of a ${selectedPersona.age} year old ${selectedPersona.gender} model resembling the user, wearing a ${targetItem.name}.
-        Style: ${brandVibe.mood}, ${selectedPersona.stylePreferences.join(', ')}.
-        Setting: Professional studio or lifestyle matching the brand.
-        High quality, photorealistic, 4k.
-      `;
-
-      const imageResponse = await ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
-        contents: { role: 'user', parts: [{ text: imagePrompt }] },
-        config: {
-          imageConfig: {
-            aspectRatio: "3:4",
-            imageSize: "1K"
-          }
-        }
-      });
-
-      let generatedImageUrl = '';
-      for (const part of imageResponse.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          generatedImageUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
-        }
-      }
-
-      // 3. Generate Lookbook
-      // Combine cart items and recommended items
-      const lookbookItems = [...selectedPersona.cartItems, ...selectedPersona.recommendedItems].slice(0, 4);
-      
-      const lookbookImageParts = await Promise.all(lookbookItems.map(async (item) => {
+      // 2. Image Generation Task
+      const generateImage = async () => {
+        let imageParts: any[] = [];
         try {
-          const response = await fetch(item.imageUrl);
-          const blob = await response.blob();
-          const base64 = await new Promise<string>((resolve) => {
+          const personaRes = await fetch(selectedPersona.imageUrl);
+          const personaBlob = await personaRes.blob();
+          const personaBase64 = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
+            reader.readAsDataURL(personaBlob);
           });
-          return {
-            inlineData: {
-              mimeType: blob.type,
-              data: base64.split(',')[1]
-            }
-          };
-        } catch (e) {
-          return null;
-        }
-      }));
+          imageParts.push({
+            inlineData: { mimeType: personaBlob.type, data: personaBase64.split(',')[1] }
+          });
 
-      const validLookbookParts = lookbookImageParts.filter(Boolean) as any[];
-
-      const lookbookPrompt = `
-        Create a single-page high-fashion editorial lookbook layout featuring these ${validLookbookParts.length} items.
-        Theme: ${brandVibe.mood} for ${selectedPersona.name}.
-        Style: ${selectedPersona.stylePreferences.join(', ')}.
-        Layout: Asymmetrical, artistic, magazine style.
-        Background: Complementary to ${brandVibe.colors.join(', ')}.
-        Include the text "${brandVibe.name} x ${selectedPersona.name}" elegantly.
-      `;
-
-      const lookbookResponse = await ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
-        contents: {
-          role: 'user',
-          parts: [
-            { text: lookbookPrompt },
-            ...validLookbookParts
-          ]
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: "3:4",
-            imageSize: "1K"
+          const productRes = await fetch(`/api/proxy-image?url=${encodeURIComponent(targetItem.imageUrl)}`);
+          if (productRes.ok) {
+              const productBlob = await productRes.blob();
+              const productBase64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(productBlob);
+              });
+              imageParts.push({
+              inlineData: { mimeType: productBlob.type, data: productBase64.split(',')[1] }
+              });
           }
+        } catch (e) {
+          console.error("Failed to load campaign source images:", e);
         }
-      });
 
-      let generatedLookbookUrl = '';
-      for (const part of lookbookResponse.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          generatedLookbookUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
+        const imagePrompt = `
+          Fashion photography of the model provided in the first image, wearing the garment provided in the second image.
+          If no images are provided, generate a ${selectedPersona.age} year old ${selectedPersona.gender} model wearing a ${targetItem.name}.
+          Style: ${brandVibe.mood}, ${selectedPersona.stylePreferences.join(', ')}.
+          Setting: Professional studio or lifestyle matching the brand.
+          High quality, photorealistic, 4k.
+        `;
+
+        const imageResponse = await ai.models.generateContent({
+          model: 'gemini-3-pro-image-preview',
+          contents: { role: 'user', parts: [{ text: imagePrompt }, ...imageParts] },
+          config: { imageConfig: { aspectRatio: "3:4", imageSize: "1K" } }
+        });
+
+        for (const part of imageResponse.candidates?.[0]?.content?.parts || []) {
+          if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
         }
-      }
+        return 'https://picsum.photos/800/600';
+      };
+
+      // 3. Lookbook Generation Task
+      const generateLookbook = async () => {
+        const lookbookItems = [...selectedPersona.cartItems, ...selectedPersona.recommendedItems].slice(0, 6); // Up to 6 items
+        
+        const lookbookImageParts = await Promise.all(lookbookItems.map(async (item) => {
+          try {
+            const response = await fetch(`/api/proxy-image?url=${encodeURIComponent(item.imageUrl)}`);
+            if (!response.ok) throw new Error('Proxy failed');
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+            return {
+              inlineData: { mimeType: blob.type, data: base64.split(',')[1] }
+            };
+          } catch (e) {
+            return null;
+          }
+        }));
+
+        const validLookbookParts = lookbookImageParts.filter(Boolean) as any[];
+
+        const lookbookPrompt = `
+          Create a single-page high-fashion editorial lookbook layout featuring ALL ${validLookbookParts.length} provided items.
+          Theme: ${brandVibe.mood} for ${selectedPersona.name}.
+          Style: ${selectedPersona.stylePreferences.join(', ')}.
+          Layout: Asymmetrical, artistic, magazine style. Arrange the items creatively on the page.
+          Background: Complementary to ${Object.values(brandVibe.palette).join(', ')}.
+          Include the text "${brandVibe.name} x ${selectedPersona.name}" elegantly.
+        `;
+
+        const lookbookResponse = await ai.models.generateContent({
+          model: 'gemini-3-pro-image-preview',
+          contents: { role: 'user', parts: [{ text: lookbookPrompt }, ...validLookbookParts] },
+          config: { imageConfig: { aspectRatio: "3:4", imageSize: "1K" } }
+        });
+
+        for (const part of lookbookResponse.candidates?.[0]?.content?.parts || []) {
+          if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+        }
+        return undefined;
+      };
+
+      // Execute all in parallel
+      const [copyData, imageUrl, lookbookUrl] = await Promise.all([
+        generateCopy(),
+        generateImage(),
+        generateLookbook()
+      ]);
 
       setGeneratedCampaign({
         subject: copyData.subject,
         body: copyData.body,
-        imageUrl: generatedImageUrl || 'https://picsum.photos/800/600',
-        lookbookUrl: generatedLookbookUrl
+        imageUrl: imageUrl,
+        lookbookUrl: lookbookUrl
       });
 
     } catch (error) {
@@ -356,7 +375,7 @@ export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProp
                         </p>
                         <button 
                           className="px-6 py-2 bg-neutral-900 text-white rounded-lg font-medium text-sm hover:bg-neutral-800 transition-colors"
-                          style={{ backgroundColor: brandVibe?.accentColor }}
+                          style={{ backgroundColor: brandVibe?.palette.accent }}
                         >
                           Shop Now
                         </button>
