@@ -1,0 +1,30 @@
+steps:
+  # 1. Build App Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:latest', '.']
+
+  # 2. Build Scraper Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/vital-octagon-19612/gen-fashion-scraper:latest', 'scraper-service']
+
+  # 3. Push App Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:latest']
+
+  # 4. Push Scraper Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/vital-octagon-19612/gen-fashion-scraper:latest']
+
+  # 5. Deploy to Cloud Run using service.yaml
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'replace'
+      - 'service.yaml'
+      - '--region=us-central1'
+
+images:
+  - 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:latest'
+  - 'gcr.io/vital-octagon-19612/gen-fashion-scraper:latest'

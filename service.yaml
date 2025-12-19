@@ -1,0 +1,39 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: gen-fashion-atelier-uat
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      serviceAccountName: 440790012685-compute@developer.gserviceaccount.com
+      containers:
+        - name: app
+          image: gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GOOGLE_CLOUD_PROJECT
+              value: "vital-octagon-19612"
+            - name: GOOGLE_CLOUD_LOCATION
+              value: "global"
+            - name: SCRAPER_SERVICE_URL
+              value: "http://localhost:4000/scrape"
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+        - name: scraper
+          image: gcr.io/vital-octagon-19612/gen-fashion-scraper:latest
+          env:
+            - name: PORT
+              value: "4000"
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
