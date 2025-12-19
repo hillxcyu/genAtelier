@@ -45,6 +45,15 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
     }
   };
 
+  const handleToggleSelectAll = () => {
+    if (!catalog) return;
+    if (selectedCatalogItems.length === catalog.length) {
+      setSelectedCatalogItems([]);
+    } else {
+      setSelectedCatalogItems([...catalog]);
+    }
+  };
+
   const handleAddSelectedCatalogItems = async () => {
     if (selectedCatalogItems.length === 0) return;
     setIsLoadingCatalog(true);
@@ -95,78 +104,92 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
       }
 
       const newPages: string[] = [];
+      let completedCount = 0;
+      setProgress(`Starting generation of ${chunks.length} pages...`);
 
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        setProgress(`Rendering page ${i + 1} of ${chunks.length}...`);
+      const pageGenerationPromises = chunks.map(async (chunk, index) => {
+        try {
+          const imageParts = await Promise.all(chunk.map(async (p) => {
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(p.file);
+            });
+            return {
+              inlineData: {
+                mimeType: p.file.type,
+                data: base64.split(',')[1]
+              }
+            };
+          }));
 
-        // Prepare image parts for the prompt
-        const imageParts = await Promise.all(chunk.map(async (p) => {
-          const base64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(p.file);
+          const vibeContext = brandVibe ? `
+            Brand Identity: ${brandVibe.name}
+            Color Palette: Primary: ${brandVibe.palette.primary}, Secondary: ${brandVibe.palette.secondary}, Background: ${brandVibe.palette.background}, Text: ${brandVibe.palette.text}
+            Accent Color: ${brandVibe.palette.accent}
+            Font Style: ${brandVibe.font}
+          ` : 'Style: High-end, minimalist fashion editorial.';
+
+          const prompt = `
+            Create a stunning, high-fashion editorial lookbook page featuring the provided clothing item(s).
+            
+            ${vibeContext}
+            
+            Directives:
+            1. LAYOUT: Use an asymmetrical, artistic layout. Do NOT use a simple grid. Overlap elements slightly or use interesting whitespace.
+            2. CONTENT: seamlessly integrate the provided product image(s) into the page. 
+            3. TEXT: Generate and render elegant, legible marketing copy describing the items (e.g., "The Silk Touch", "Midnight Elegance"). Use the brand's font style.
+            4. BACKGROUND: Use the brand's color palette to create a cohesive background that complements the products.
+            5. QUALITY: The output must look like a scanned page from Vogue or Harper's Bazaar. High resolution, photorealistic.
+          `;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-image-preview',
+            contents: {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                ...imageParts
+              ]
+            },
+            config: {
+              imageConfig: {
+                aspectRatio: "3:4",
+                imageSize: "1K"
+              }
+            }
           });
-          return {
-            inlineData: {
-              mimeType: p.file.type,
-              data: base64.split(',')[1]
-            }
-          };
-        }));
 
-        // Construct Prompt
-        const vibeContext = brandVibe ? `
-          Brand Identity: ${brandVibe.name}
-          Color Palette: Primary: ${brandVibe.palette.primary}, Secondary: ${brandVibe.palette.secondary}, Background: ${brandVibe.palette.background}, Text: ${brandVibe.palette.text}
-          Accent Color: ${brandVibe.palette.accent}
-          Font Style: ${brandVibe.font}
-        ` : 'Style: High-end, minimalist fashion editorial.';
-
-        const prompt = `
-          Create a stunning, high-fashion editorial lookbook page featuring the provided clothing item(s).
-          
-          ${vibeContext}
-          
-          Directives:
-          1. LAYOUT: Use an asymmetrical, artistic layout. Do NOT use a simple grid. Overlap elements slightly or use interesting whitespace.
-          2. CONTENT: seamlessly integrate the provided product image(s) into the page. 
-          3. TEXT: Generate and render elegant, legible marketing copy describing the items (e.g., "The Silk Touch", "Midnight Elegance"). Use the brand's font style.
-          4. BACKGROUND: Use the brand's color palette to create a cohesive background that complements the products.
-          5. QUALITY: The output must look like a scanned page from Vogue or Harper's Bazaar. High resolution, photorealistic.
-        `;
-
-        // Call Gemini 3 Pro
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-pro-image-preview',
-          contents: {
-            role: 'user',
-            parts: [
-              { text: prompt },
-              ...imageParts
-            ]
-          },
-          config: {
-            imageConfig: {
-              aspectRatio: "3:4",
-              imageSize: "1K"
+          let resultUrl: string | null = null;
+          if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+              if (part.inlineData) {
+                resultUrl = `data:image/png;base64,${part.inlineData.data}`;
+                break;
+              }
             }
           }
-        });
+          
+          completedCount++;
+          setProgress(`Generating pages... (${completedCount}/${chunks.length})`);
+          return resultUrl;
 
-        // Extract Image
-        if (response.candidates?.[0]?.content?.parts) {
-          for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-              const base64Data = part.inlineData.data;
-              newPages.push(`data:image/png;base64,${base64Data}`);
-              break;
-            }
-          }
+        } catch (err) {
+          console.error(`Page ${index + 1} generation failed:`, err);
+          completedCount++;
+          setProgress(`Generating pages... (${completedCount}/${chunks.length})`);
+          return null;
         }
-      }
+      });
 
-      setGeneratedPages(newPages);
+      const results = await Promise.all(pageGenerationPromises);
+      const validPages = results.filter(page => page !== null) as string[];
+      
+      if (validPages.length < chunks.length) {
+        alert(`Lookbook generation complete, but ${chunks.length - validPages.length} page(s) failed to generate.`);
+      }
+      
+      setGeneratedPages(validPages);
 
     } catch (error) {
       console.error("Lookbook generation failed:", error);
@@ -226,12 +249,20 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
                         <ShoppingBag className="w-5 h-5 text-fuchsia-400" />
                         Select Products
                       </h3>
-                      <button 
-                        onClick={() => setShowCatalog(false)}
-                        className="p-2 hover:bg-[var(--input-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={handleToggleSelectAll}
+                          className="text-xs font-medium text-fuchsia-400 hover:text-fuchsia-300 transition-colors"
+                        >
+                          {catalog && selectedCatalogItems.length === catalog.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                        <button 
+                          onClick={() => setShowCatalog(false)}
+                          className="p-2 hover:bg-[var(--input-bg)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                     
                     <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
