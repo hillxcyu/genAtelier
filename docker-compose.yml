@@ -7,14 +7,14 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEY=AIzaSyBPDGsPqqZmLAPuWXP_e-nSSqvgp4SdZao
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION}
       - GOOGLE_APPLICATION_CREDENTIALS=/tmp/adc.json
     volumes:
       - .:/app
       - /app/node_modules
-      - ${HOME}/.config/gcloud/application_default_credentials.json:/tmp/adc.json:ro
+      - ../new_service_key.json:/tmp/adc.json:ro
 
   frontend:
     build:

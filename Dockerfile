@@ -4,7 +4,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps || npm install --force
 
 COPY . .
 
@@ -18,8 +18,8 @@ ENV GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
 ARG GOOGLE_CLOUD_LOCATION
 ENV GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION
 
-RUN npm run build
-RUN npm run build:server
+RUN echo "Building frontend..." && npm run build
+RUN echo "Building server..." && npm run build:server
 
 # Production Stage
 FROM node:18-alpine
@@ -28,7 +28,7 @@ WORKDIR /app
 
 COPY package*.json ./
 # Install only production dependencies
-RUN npm install --omit=dev
+RUN npm install --omit=dev --legacy-peer-deps || npm install --omit=dev --force
 
 COPY --from=builder /app/dist-server ./dist-server
 COPY --from=builder /app/dist ./dist

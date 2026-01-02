@@ -1,0 +1,26 @@
+{
+    "contents": [
+        {
+            "role": "user",
+            "parts": [
+                {
+                    "text": "Generate a simple test image of a fashion logo."
+                }
+            ]
+        }
+    ],
+    "generationConfig": {
+        "temperature": 1,
+        "maxOutputTokens": 32768,
+        "responseModalities": ["IMAGE"],
+        "topP": 0.95,
+        "imageConfig": {
+            "aspectRatio": "1:1",
+            "imageSize": "1K",
+            "imageOutputOptions": {
+                "mimeType": "image/png"
+            },
+            "personGeneration": "ALLOW_ALL"
+        }
+    }
+}

@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules/
+dist/
+dist-server/
+.env*
+README.md
+Dockerfile.dev
+docker-compose.yml
+access_keys.json
+new_service_key.json

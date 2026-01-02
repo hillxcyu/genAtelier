@@ -19,22 +19,32 @@ const projectId = process.env.GOOGLE_CLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION;
 const apiKey = process.env.GEMINI_API_KEY;
 
-let ai: GoogleGenAI;
+// We initialize two instances: 
+// 1. aiVertex - Primary for standard models (Flash, etc.)
+// 2. aiStudio - Fallback or direct for Preview/Image models that 404 on Vertex
+let aiVertex: GoogleGenAI | null = null;
+let aiStudio: GoogleGenAI | null = null;
 
 if (projectId) {
-  // Use Vertex AI
-  console.log(`Initializing Vertex AI with project: ${projectId}, location: ${location}`);
-  ai = new GoogleGenAI({
+  console.log(`Initializing Vertex AI with project: ${projectId}, location: ${location || 'us-central1'}`);
+  aiVertex = new GoogleGenAI({
     vertexai: true,
     project: projectId,
     location: location || 'us-central1',
   });
-} else {
-  // Fallback to AI Studio
-  console.log(`Initializing AI Studio with API Key: ${apiKey ? '***' + apiKey.slice(-4) : 'MISSING'}`);
-  ai = new GoogleGenAI({ 
+}
+
+if (apiKey) {
+  console.log(`Initializing AI Studio with API Key: ***${apiKey.slice(-4)}`);
+  aiStudio = new GoogleGenAI({ 
     apiKey: apiKey 
   });
+}
+
+// Global variable for backward compatibility if needed, but we'll use the specific ones above.
+const aiDefault = aiVertex || aiStudio;
+if (!aiDefault) {
+  console.error('CRITICAL: No AI service initialized. Check GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT.');
 }
 
 app.post('/api/generate-content', async (req, res) => {
@@ -48,44 +58,74 @@ app.post('/api/generate-content', async (req, res) => {
       return;
     }
     
-    console.log(`Calling model: ${model}`);
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: contents,
-      config: config
-    });
+    // Logic: 
+    // - If model is gemini-3-pro-image-preview, try AI Studio first (known Vertex 404)
+    // - Otherwise, try Vertex first, fallback to Studio
     
-    // Handle SDK wrapper: if response.response exists, return that (it contains candidates)
-    // Otherwise return response directly.
+    let response;
+    let usedService = 'none';
+
+    try {
+      if (model === 'gemini-3-pro-image-preview' && aiStudio) {
+        console.log(`Directing ${model} to AI Studio...`);
+        response = await aiStudio.models.generateContent({ model, contents, config });
+        usedService = 'Studio (Direct)';
+      } else if (aiVertex) {
+        console.log(`Calling vertex: ${model} in project: ${projectId}`);
+        response = await aiVertex.models.generateContent({ model, contents, config });
+        usedService = 'Vertex';
+      } else if (aiStudio) {
+        console.log(`Calling Studio: ${model}`);
+        response = await aiStudio.models.generateContent({ model, contents, config });
+        usedService = 'Studio';
+      } else {
+        throw new Error('No AI service (Vertex or Studio) is available.');
+      }
+    } catch (primaryError: any) {
+      console.warn(`Primary service call failed for ${model}:`, primaryError.message);
+      
+      // Fallback logic if first attempt failed and we have an alternative
+      if (usedService === 'Vertex' && aiStudio) {
+        console.log(`Falling back to AI Studio for ${model}...`);
+        response = await aiStudio.models.generateContent({ model, contents, config });
+        usedService = 'Studio (Fallback)';
+      } else if (usedService === 'Studio (Direct)' && aiVertex) {
+        console.log(`Falling back to Vertex for ${model}...`);
+        response = await aiVertex.models.generateContent({ model, contents, config });
+        usedService = 'Vertex (Fallback)';
+      } else {
+        throw primaryError; // No fallback available or primary error was final
+      }
+    }
+
+    console.log(`Success using ${usedService}. Raw response type:`, typeof response);
     const rawResponse = (response as any).response ? (response as any).response : response;
 
-    // The SDK's `text()` method is a helper that isn't serialized in JSON.
-    // We need to manually extract it if it exists.
     let textContent = null;
     try {
       if (typeof response.text === 'function') {
          textContent = response.text();
       } else if (rawResponse.candidates && rawResponse.candidates.length > 0) {
-          // Fallback extraction if .text() isn't available on the raw object
           textContent = rawResponse.candidates[0].content.parts.map((p: any) => p.text).join('');
       }
     } catch (e) {
-      // Ignore text extraction errors (e.g. for image generation responses)
+      console.log('Text extraction skipped (might be image response)');
     }
 
     const dataToSend = {
         ...rawResponse,
-        text: textContent // Add the extracted text as a property
+        text: textContent,
+        metadata: { service: usedService }
     };
-
-    // Log the response structure (shallow) to debug
-    console.log('Response received, sending data keys:', Object.keys(dataToSend));
 
     res.json(dataToSend);
   } catch (error: any) {
-    console.error('Error generating content:', error);
-    res.status(500).json({ error: error.message || 'Internal Server Error' });
+    console.error('Error generating content ERROR_BODY:', error);
+    res.status(500).json({ 
+      error: error.message || 'Internal Server Error',
+      details: error.stack,
+      raw: error.response?.data || error.response || error
+    });
   }
 });
 
