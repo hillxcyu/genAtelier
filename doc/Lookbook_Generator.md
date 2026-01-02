@@ -9,9 +9,11 @@ The **Lookbook Generator** automates the creation of high-fashion editorial cont
     *   The system groups these items into "pages" (typically 1-2 items per page).
 
 2.  **Editorial Layout Generation:**
+    *   **Concurrent Page Generation:** Multiple lookbook pages are generated simultaneously using Gemini 3 Pro to speed up the process.
     *   **Gemini 3 Pro** is used to generate full-page layouts.
     *   **Directives:** The AI is instructed to use asymmetrical, artistic layouts (avoiding simple grids) and to treat the output as a scanned page from a high-end fashion magazine (e.g., Vogue).
     *   **Branding:** The brand's specific fonts and color palette are applied to the background and typography of the generated page.
+    *   **Error Handling:** The generation process is resilient; if an individual page fails to generate, the other pages will still complete, and the user is notified of any failures.
 
 3.  **PDF Export:**
     *   The generated pages are compiled into a downloadable PDF document, ready for distribution.

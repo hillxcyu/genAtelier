@@ -8,13 +8,14 @@ The **Personalized Campaigns** module demonstrates the power of hyper-personaliz
     *   The system simulates detailed user profiles (e.g., "Emma, 26, Minimalist") with specific style preferences, locations, and shopping histories.
     *   **Cart & Recommendations:** Each persona has specific items in their "Cart" and a list of "Recommended Items" derived from the brand catalog.
 
-2.  **Generative Marketing:**
+2.  **Generative Marketing (Concurrent Generation):**
+    *   **Simultaneous Output:** Copywriting, personalized visuals, and curated lookbooks are all generated concurrently to provide a fast, comprehensive campaign.
     *   **Copywriting:** Generates a personalized email subject line and body text tailored to the user's demographics and the brand's voice.
-    *   **Visuals:** Generates a photorealistic image of *that specific user persona* wearing an item from their cart.
+    *   **Visuals:** Generates a photorealistic image of *that specific user persona* wearing an item from their cart, using the actual product image and user persona image as visual inputs for the model.
 
 3.  **Curated Lookbook:**
-    *   Automatically generates a mini-lookbook page combining the user's cart items with recommended items.
-    *   This creates a "Complete the Look" experience tailored to the individual's taste.
+    *   Automatically generates a mini-lookbook page combining the user's cart items with recommended items (up to 6 items).
+    *   This creates a "Complete the Look" experience tailored to the individual's taste, using actual product images from the catalog.
 
 ## Technical Implementation
 *   **Text Model:** `gemini-3-flash-preview` for generating the email copy.
