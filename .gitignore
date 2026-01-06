@@ -7,3 +7,8 @@ coverage/
 .env*
 access_keys.json
 new_service_key.json
+backend/results/
+results/
+backend/venv/
+backend/venv_new/
+backend/__pycache__/
