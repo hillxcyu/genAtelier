@@ -9,3 +9,8 @@ Dockerfile.dev
 docker-compose.yml
 access_keys.json
 new_service_key.json
+backend/venv/
+backend/venv_new/
+backend/__pycache__/
+backend/*.log
+results/

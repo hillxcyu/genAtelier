@@ -1,109 +1,129 @@
-# GenFashion Atelier
+# GenFashion Atelier 🎨👗
 
-**GenFashion Atelier** is an AI-powered creative workspace designed to revolutionize the fashion workflow. By leveraging Google's Gemini models, it enables brands to ingest their catalog, generate high-fidelity virtual try-ons, create automated lookbooks, and launch personalized marketing campaigns—all from a single interface.
-
-## 🚀 Key Features
-
-### 1. Virtual Fitting Room (VTO)
-A state-of-the-art virtual try-on experience that allows users to visualize garments on their own photos.
-*   **Generative Fitting:** Realistically warps and blends garments onto user photos using `gemini-3-pro-image-preview`.
-*   **AI Styling Assistant:** Automatically suggests matching accessories from the catalog to "Complete the Look".
-*   **Multi-Item Try-On:** Generates a cohesive outfit with multiple selected items.
-*   [📄 Read Documentation](doc/Virtual_Try_On.md)
-
-### 2. Brand Ingestion & Knowledge Base
-Upload and analyze brand assets to create a "Brand Vibe" that guides all AI generations.
-*   **Visual Analysis:** Extracts color palettes, textures, and style keywords from uploaded images.
-*   **Vibe Definition:** Defines the brand's aesthetic (e.g., "Minimalist", "Boho", "Streetwear").
-*   [📄 Read Documentation](doc/Brand_Ingestion.md)
-
-### 3. Semantic Inference
-Deeply analyzes product images to extract rich metadata for better search and styling.
-*   **Attribute Extraction:** Identifies material, occasion, fit, and seasonality.
-*   **Styling Graph:** Understands relationships between items for better recommendations.
-*   [📄 Read Documentation](doc/Semantic_Inference.md)
-
-### 4. Product-to-Model Transformation
-Instantly transforms flat-lay or ghost mannequin product shots into professional on-model editorial images.
-*   **Diverse Models:** Select from a range of AI-generated models.
-*   **Scene Generation:** Place models in brand-appropriate environments.
-*   [📄 Read Documentation](doc/Product_to_Model.md)
-
-### 5. Automated Lookbook Generator
-Creates cohesive fashion collections and lookbooks based on themes or seasons.
-*   **Theme-Based Generation:** "Summer Vacation", "Office Chic", etc.
-*   **Layout Automation:** Arranges images into professional layouts.
-*   [📄 Read Documentation](doc/Lookbook_Generator.md)
-
-### 6. Personalized Campaigns
-Generates targeted marketing assets for specific user segments.
-*   **Copywriting:** AI-generated taglines and descriptions.
-*   **Visuals:** Custom campaign imagery aligned with the brand vibe.
-*   [📄 Read Documentation](doc/Personalized_Campaigns.md)
+**GenFashion Atelier** is a state-of-the-art AI-powered platform designed to revolutionize the fashion design and marketing workflow. By leveraging Google's Gemini models, it provides an end-to-end creative suite for fashion brands—from automated brand asset ingestion to high-fidelity virtual try-ons and personalized campaign generation.
 
 ---
 
-## 🛠️ Getting Started
+## 🏗️ System Architecture
+
+The application is built with a microservices-aligned architecture, unified for seamless deployment:
+
+```mermaid
+graph TD
+    User((User)) -->|Browser| Frontend[React + Vite Frontend]
+    Frontend -->|API Requests| NodeBackend[Node.js Express Gateway]
+    NodeBackend -->|Direct Call| Gemini[Google Gemini AI]
+    NodeBackend -->|Proxy| PyBackend[Python FastAPI Service]
+    PyBackend -->|Scraping/Analysis| Playwright[Playwright + Gemini]
+    PyBackend -->|Store| BrandResults[Brand Identity Assets]
+```
+
+---
+
+## ✨ Key Features
+
+### 1. Brand Intelligence & Ingestion
+Analyze any brand's digital presence to extract its unique "vibe."
+*   **Automatic Asset Discovery:** Scrapes logos, favicons, and key brand imagery.
+*   **Semantic Style Extraction:** Identifies core aesthetic keywords, color palettes (with hex codes), and typography using Gemini 2.5 Flash.
+*   **Automated Brand Book:** Generates a professional PDF report summarizing the brand's identity.
+
+### 2. Virtual Try-On (VTO)
+A photorealistic virtual fitting room powered by `gemini-3-pro-image-preview`.
+*   **Garment Warping:** Realistically fits clothing items onto user-uploaded photos.
+*   **Intelligent Styling:** Suggests matching items from the catalog to complete an outfit.
+*   **Multi-Item Support:** Layer multiple garments for a full look.
+
+### 3. Editorial Image Generation
+Transform product photography into high-end editorial content.
+*   **Product-to-Model:** Converts flat-lays or mannequin shots into "on-model" shots.
+*   **Scene Synthesis:** Automatically generates brand-aligned backgrounds and environments.
+*   **Diverse Model Selection:** Supports a wide range of AI-generated models for better representation.
+
+### 4. Lookbook & Campaign Automation
+Scale creativity with automated content generation.
+*   **Dynamic Lookbooks:** Create themed collections (e.g., "Nordic Winter", "Urban Summer") in seconds.
+*   **Personalized Campaigns:** Generate targeted marketing visuals and copy tailored to specific customer segments.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Framer Motion.
+- **Backends:** 
+    - **Node.js Gateway:** Handles API orchestration, authentication, and static file serving.
+    - **Python Service:** Specialized in web scraping (Playwright) and complex PDF generation (ReportLab).
+- **AI Infrastructure:**
+    - `gemini-2.5-flash`: For text analysis, JSON parsing, and general logic.
+    - `gemini-3-pro-image-preview`: For high-fidelity image synthesis and VTO.
+    - `vertex-ai`: Primary deployment target for enterprise AI stability.
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-*   **Node.js** (v18 or higher)
-*   **Google Gemini API Key** (Get one at [aistudio.google.com](https://aistudio.google.com))
-    *   *Note: Some features like VTO require a paid tier key for `gemini-3-pro-image-preview`.*
+- Node.js 18+
+- Python 3.10+
+- Google Cloud Project with Gemini API enabled.
 
-### Installation
+### Local Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/genfashion-atelier.git
-    cd genfashion-atelier
-    ```
+1. **Clone the project:**
+   ```bash
+   git clone https://github.com/your-username/genfashion-atelier.git
+   cd genfashion-atelier
+   ```
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+2. **Server Configuration:**
+   Create a `.env` file in the root:
+   ```env
+   GEMINI_API_KEY=your_api_key
+   GOOGLE_CLOUD_PROJECT=your-project-id
+   GOOGLE_CLOUD_LOCATION=us-central1
+   ```
 
-3.  **Set up Environment Variables:**
-    Create a `.env` file in the root directory and add your API key:
-    ```env
-    GEMINI_API_KEY=your_api_key_here
-    ```
+3. **Install & Run (Manual):**
+   ```bash
+   # Terminal 1: Python Backend
+   cd backend
+   python -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   python main.py
 
-### Deployment to Google Cloud Run
+   # Terminal 2: Node Gateway
+   cd ..
+   npm install
+   npm run server
 
-Since this is a client-side application, the API key must be embedded during the **build process**.
+   # Terminal 3: Frontend
+   npm run dev
+   ```
 
-1.  **Create the Docker repository (if not exists):**
-    ```bash
-    gcloud artifacts repositories create my-repo --repository-format=docker \
-    --location=us-central1 --description="Docker repository"
-    ```
+---
 
-2.  **Build the image:**
-    Replace `YOUR_API_KEY` with your actual Gemini API key.
-    ```bash
-    gcloud builds submit --tag us-central1-docker.pkg.dev/PROJECT_ID/my-repo/genfashion-atelier \
-      --build-arg GEMINI_API_KEY=YOUR_API_KEY .
-    ```
+## ☁️ Deployment
 
-3.  **Deploy to Cloud Run:**
-    ```bash
-    gcloud run deploy genfashion-atelier \
-      --image us-central1-docker.pkg.dev/PROJECT_ID/my-repo/genfashion-atelier \
-      --platform managed \
-      --region us-central1 \
-      --allow-unauthenticated
-    ```
+### Cloud Run (Recommended)
+This project is configured for a unified Cloud Run deployment using the provided `deploy_lookbook.sh` script.
 
-**⚠️ Security Note:** Since the API key is embedded in the client-side code, it will be visible to users in the browser. You **MUST** restrict your API key in the Google Cloud Console:
-*   Go to **APIs & Services > Credentials**.
-*   Edit your API key.
-*   Set **Application restrictions** to **HTTP referrers (web sites)**.
-*   Add your Cloud Run URL (e.g., `https://genfashion-atelier-xyz.a.run.app/*`).
+1. **Authenticate gcloud:**
+   ```bash
+   gcloud auth login
+   gcloud config set project YOUR_PROJECT_ID
+   ```
 
-*   **Frontend:** React, TypeScript, Vite
-*   **Styling:** Tailwind CSS, Framer Motion
-*   **AI Models:**
-    *   `gemini-2.5-flash` (Text, Logic, JSON)
-    *   `gemini-3-pro-image-preview` (High-Fidelity Image Generation)
-*   **Icons:** Lucide React
+2. **Run Deployment Script:**
+   ```bash
+   chmod +x deploy_lookbook.sh
+   ./deploy_lookbook.sh
+   ```
+
+The script builds a unified container containing both the Node.js and Python services, making it easy to manage as a single scale-to-zero service.
+
+---
+
+## 📄 License
+SPDX-License-Identifier: Apache-2.0
+
