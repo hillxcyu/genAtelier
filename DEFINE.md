@@ -1,22 +1,26 @@
-# DEFINE: Implementation Tasks for Director's Mode
+# DEFINE: Implementation Tasks for AI Storyboard
 
-## [Frontend] UI & State Management
-- [ ] **Define `LookbookConfig` Interface:** Create a TypeScript interface for the new settings (layout, lighting, color, slogan).
-- [ ] **Create Configuration Panel Component:**
-    - [ ] Add a collapsible "Director's Controls" section in `LookbookModule.tsx`.
-    - [ ] Implement Layout Selector (Grid, Editorial, Hero, Collage).
-    - [ ] Implement Lighting/Vibe Selector (Studio, Golden Hour, Moody).
-    - [ ] Implement Campaign Slogan input field.
-- [ ] **State Wiring:** Connect the UI inputs to the local component state `config`.
+## [Frontend] State & Types
+- [ ] **Define Interfaces:** `StoryboardPage`, `PageConfig`, `CuratorialStrategy`.
+- [ ] **State Management:** Add `storyboard` (array of pages) and `viewMode` ('selection' | 'storyboard') to `LookbookModule`.
 
-## [Logic] Prompt Engineering & Integration
-- [ ] **Refactor `generateLookbook` Function:**
-    - [ ] Update function signature or closure to access the `config` state.
-    - [ ] Implement a **Prompt Builder** logic that conditionally adds directives based on `config`.
-    - [ ] **Layout Directive:** "Strict grid alignment" vs "Asymmetrical overlapping".
-    - [ ] **Lighting Directive:** "Bright studio lighting" vs "Warm sunset glow".
-    - [ ] **Text Directive:** Ensure the slogan is explicitly requested in the image generation text.
+## [Logic] The "Drafter" Service (Gemini Flash)
+- [ ] **Implement `draftStoryboard`:**
+    *   Input: `selectedItems`, `groupingStrategy`, `globalConfig`.
+    *   Prompt: "Group these items into pages based on [Strategy]. Return JSON with item IDs assigned to pages, plus a suggested layout and caption for each page."
+    *   Parsing: Convert the AI response into the `StoryboardPage[]` state.
 
-## [Testing] Verification
-- [ ] **Layout Test:** Generate 4 pages, one for each layout type, and verify visual distinction.
-- [ ] **Lighting Test:** Verify "Golden Hour" produces warm tones vs "Studio" cool/neutral tones.
+## [Frontend] The Storyboard Editor UI
+- [ ] **"Drafting" Controls:** Add the "Curatorial Strategy" selector to the initial selection view.
+- [ ] **Storyboard Grid:** Create a view that displays the list of `StoryboardPage` objects.
+- [ ] **Page Card Component:**
+    *   Display thumbnails of items on that page.
+    *   Show/Edit Layout and Vibe dropdowns (per page).
+    *   Show/Edit Caption input.
+    *   "Render Page" button (or global Render).
+
+## [Logic] The Renderer
+- [ ] **Refactor `generateLookbook`:**
+    *   Update it to accept `StoryboardPage[]` instead of raw chunks.
+    *   Iterate through the pages, generating only those marked for rendering.
+    *   Use the *page-specific* config for the prompt, overriding global defaults if needed.

@@ -1,9 +1,10 @@
-# ACTION: Executing Director's Mode
+# ACTION: Implementing AI Storyboard Workflow
 
-## Step 1: Frontend UI & State Implementation
-I will modification `src/components/LookbookModule.tsx` to add the `LookbookConfig` interface, the state variables, and the UI configuration panel.
+## Step 1: Logic & State Implementation
+I will modify `src/components/LookbookModule.tsx` to:
+1.  Define `StoryboardPage`, `PageConfig`, and `CuratorialStrategy` types.
+2.  Add state variables for `storyboard`, `viewMode`, and `groupingStrategy`.
+3.  Implement the `draftStoryboard` function which calls Gemini Flash to organize the selected products into pages.
 
-### Actions:
-1.  Define the `LookbookConfig` interface.
-2.  Add `config` state to the component.
-3.  Insert the "Director's Controls" UI section above the "Generate" button.
+## Step 2: UI Implementation
+I will add the "Draft Storyboard" button and the "Storyboard View" UI to visualize and edit the generated pages.
