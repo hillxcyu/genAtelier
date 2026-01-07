@@ -1,51 +1,31 @@
-# Plan: Phase 1.1 - True Brand Extraction (Web Scraping)
+# PLAN: Advanced Editorial Control Module ("Director's Mode")
 
-## Objective
-Replace the current simulated brand ingestion (which relies purely on LLM hallucination) with a real-time web scraper. This will allow the application to extract actual product images, names, and pricing from a user-provided URL, processing the raw HTML with Vertex AI to structure the data into our schema.
+**Goal:** Transform the Lookbook Generator from a simple image compositor into a professional **Campaign Art Direction Tool**. Give retailers granular control over layout, lighting, and narrative elements to ensure generated assets match specific seasonal campaign goals.
 
-## Architecture Changes
+## 1. The "Director's Mode" UI (Frontend)
+Introduce a collapsible configuration panel in `LookbookModule.tsx` that exposes three key dimensions of control:
 
-### Backend (`server/`)
-1.  **Dependencies:** Add `axios` (or `node-fetch`) and `cheerio` for lightweight HTML parsing. (Avoiding `puppeteer` for now to keep the container lightweight for Cloud Run, unless dynamic JS rendering is strictly required).
-2.  **New Endpoint:** `POST /api/extract-brand`
-    *   **Input:** `{ url: string }`
-    *   **Process:**
-        1.  Fetch HTML content from the URL.
-        2.  Use `cheerio` to extract potential product containers (images, headers, price text).
-        3.  Construct a prompt for Vertex AI (Gemini 2.5 Flash) containing the raw extracted text/image URLs.
-        4.  Gemini output: A structured JSON matching our `BrandAnalysisResult` interface (colors, fonts, mood, catalog items).
-    *   **Output:** JSON object with `BrandVibe` and `CatalogItem[]`.
+### A. Layout Archetypes (Structure)
+*   **"The Catalog Grid":** Clean, symmetrical, product-focused. (e.g., E-commerce listings)
+*   **"The Editorial Asymmetry":** Overlapping, dynamic sizing, artistic whitespace. (e.g., Vogue/Campaigns)
+*   **"The Hero & Details":** One dominant full-shot + detailed close-ups. (e.g., Product Launches)
+*   **"The Mood Collage":** Scrapbook style, mixed media vibe. (e.g., Social Media/Streetwear)
 
-### Frontend (`src/`)
-1.  **API Client:** Update `src/utils/brandGenerator.ts` to call the new `/api/extract-brand` endpoint instead of calling Vertex AI directly for the *extraction* phase.
-2.  **Fallback:** Maintain the current LLM-only generation as a fallback if the scraper fails (e.g., due to bot protection on the target site).
+### B. Chromatic & Atmospheric Control (Vibe)
+*   **Color Strategy:** Monochromatic, High Contrast, or Minimalist/Neutral.
+*   **Lighting Simulation:** High-Key (Studio), Golden Hour (Natural), or Moody/Noir (Dramatic).
 
-## Implementation Steps
+### C. Narrative Elements (Story)
+*   **Campaign Slogan:** Text input for specific campaign themes (e.g., "Summer Escapism").
+*   **Typography Style:** Toggle between Minimal (Info only) vs. Editorial (Headlines/Quotes).
 
-### 1. Server Setup
-- [ ] Install `axios` and `cheerio` in `server/`.
-- [ ] Create `server/scraper.ts` service module.
-- [ ] Implement `fetchSiteData(url)` function to get raw HTML.
-- [ ] Implement `extractContent(html)` using Cheerio to find likely content blocks (focusing on `img`, `h1-h6`, `span` with currency symbols).
+## 2. AI Logic & Prompt Engineering (Backend Integration)
+*   **Structured Prompt Builder:** Refactor the prompt generation logic to ingest these new parameters.
+*   **Dynamic Directives:** Inject specific constraints based on the user's selection (e.g., *If Layout="Grid" -> "Enforce strict alignment"*).
+*   **Context Passing:** Ensure the chosen "Campaign Slogan" is effectively integrated into the visual composition logic.
 
-### 2. AI Integration (Server-Side)
-- [ ] Update `server/index.ts` to include the new endpoint.
-- [ ] Construct a robust prompt for Gemini:
-    *   *Input:* "Here is a list of image URLs and text snippets extracted from a fashion retailer's website..."
-    *   *Task:* "Identify the brand identity (colors, mood) and identifying actual product items. Filter out icons/logos. Return JSON."
-
-### 3. Frontend Integration
-- [ ] Modify `src/utils/brandGenerator.ts`:
-    *   Switch from `generateContent` (direct LLM) to `fetch('/api/extract-brand')`.
-    *   Handle the response to populate `brandVibe` and `catalog`.
-- [ ] Test with real URLs (e.g., Zara, H&M, or smaller boutiques).
-
-### 4. Deployment
-- [ ] Update `Dockerfile` if any new system dependencies are needed (none expected for `cheerio`).
-- [ ] Deploy to Cloud Run.
-
-## Risk Mitigation
-*   **Bot Protection:** Many major retailer sites block simple scrapers.
-    *   * mitigation:* If the fetch fails (403/401), we silently catch the error and fall back to the existing "hallucination" mode (Generative simulation), ensuring the user always gets *a* result.
-*   **Latency:** Scraping + LLM processing might take 10-15s.
-    *   *mitigation:* The existing `Notification` component is already set up to handle long-running processes. We will emit granular progress updates.
+## 3. Execution Strategy
+1.  **Refactor State:** Update `LookbookModule` to hold a complex `LookbookConfig` state.
+2.  **Build Controls:** Implement the UI controls (Selects/Toggles) using the existing Glassmorphism style.
+3.  **Update Generator:** Rewrite the `generateLookbook` function to utilize the config state in the prompt.
+4.  **Test:** Verify that changing parameters actually yields visibly different results from the AI.

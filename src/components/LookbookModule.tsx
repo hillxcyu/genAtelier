@@ -6,6 +6,14 @@ import { ai } from '../utils/genai';
 import { BrandVibe, CatalogItem } from '../types';
 import { getContrastText } from '../utils/color';
 
+interface LookbookConfig {
+  layout: 'grid' | 'editorial' | 'hero' | 'collage';
+  colorStrategy: 'monochromatic' | 'contrast' | 'minimalist';
+  vibe: 'studio' | 'golden_hour' | 'moody';
+  slogan: string;
+  typography: 'minimal' | 'bold';
+}
+
 interface ProductImage {
   id: string;
   url: string;
@@ -25,6 +33,16 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
   const [showCatalog, setShowCatalog] = useState(false);
   const [selectedCatalogItems, setSelectedCatalogItems] = useState<CatalogItem[]>([]);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  
+  // Director's Mode State
+  const [config, setConfig] = useState<LookbookConfig>({
+    layout: 'editorial',
+    colorStrategy: 'minimalist',
+    vibe: 'studio',
+    slogan: '',
+    typography: 'bold'
+  });
+  const [showDirectorsControls, setShowDirectorsControls] = useState(true);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -65,8 +83,6 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
         const response = await fetch(proxyUrl);
         if (!response.ok) {
           console.warn(`Failed to load ${item.name}: ${response.statusText}`);
-          // Fallback placeholder or skip?
-          // For now, create a dummy file if fails, or throw to catch block
           throw new Error(`Failed to load ${item.name}`);
         }
         const blob = await response.blob();
@@ -130,17 +146,42 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
             Font Style: ${brandVibe.font}
           ` : 'Style: High-end, minimalist fashion editorial.';
 
+          // Dynamic Prompt Construction based on Config
+          let layoutDirective = "";
+          if (config.layout === 'grid') layoutDirective = "Use a strict, symmetrical grid layout. Equal spacing. Clean white or solid background.";
+          if (config.layout === 'editorial') layoutDirective = "Use an asymmetrical, artistic layout. Overlap elements slightly. Use negative space creatively.";
+          if (config.layout === 'hero') layoutDirective = "Feature one image as a large 'Hero' shot, and place others as smaller detail insets.";
+          if (config.layout === 'collage') layoutDirective = "Create a mixed-media collage style. Torn paper edges, layered elements, chaotic but stylish.";
+
+          let colorDirective = "";
+          if (config.colorStrategy === 'monochromatic') colorDirective = "Color Strategy: Monochromatic. Use various shades and tints of the brand's primary color only.";
+          if (config.colorStrategy === 'contrast') colorDirective = "Color Strategy: High Contrast. Use complementary colors from the palette to create bold visual impact.";
+          if (config.colorStrategy === 'minimalist') colorDirective = "Color Strategy: Minimalist/Neutral. Use predominantly white, beige, or gray backgrounds with subtle brand accents.";
+
+          let lightingDirective = "";
+          if (config.vibe === 'studio') lightingDirective = "Lighting: High-key, bright professional studio lighting. Minimal shadows.";
+          if (config.vibe === 'golden_hour') lightingDirective = "Lighting: Warm, natural 'Golden Hour' sunlight. Soft shadows, warm tones.";
+          if (config.vibe === 'moody') lightingDirective = "Lighting: Low-key, dramatic, moody. Strong contrast and shadows.";
+
+          const sloganDirective = config.slogan ? `Incorporate the campaign slogan "${config.slogan}" elegantly into the page design.` : "";
+          const typoDirective = config.typography === 'bold' ? "Typography: Bold, large headlines. Magazine style." : "Typography: Minimal, small, sans-serif text only.";
+
           const prompt = `
             Create a stunning, high-fashion editorial lookbook page featuring the provided clothing item(s).
             
             ${vibeContext}
             
+            ART DIRECTION CONFIGURATION:
+            1. LAYOUT: ${layoutDirective}
+            2. COLOR & TONE: ${colorDirective}
+            3. ATMOSPHERE: ${lightingDirective}
+            4. NARRATIVE: ${sloganDirective}
+            5. TYPOGRAPHY: ${typoDirective}
+            
             Directives:
-            1. LAYOUT: Use an asymmetrical, artistic layout. Do NOT use a simple grid. Overlap elements slightly or use interesting whitespace.
-            2. CONTENT: seamlessly integrate the provided product image(s) into the page. 
-            3. TEXT: Generate and render elegant, legible marketing copy describing the items (e.g., "The Silk Touch", "Midnight Elegance"). Use the brand's font style.
-            4. BACKGROUND: Use the brand's color palette to create a cohesive background that complements the products.
-            5. QUALITY: The output must look like a scanned page from Vogue or Harper's Bazaar. High resolution, photorealistic.
+            - Content: Seamlessly integrate the provided product image(s).
+            - Background: Use the brand's color palette to create a cohesive background.
+            - Quality: The output must look like a scanned page from Vogue or Harper's Bazaar. High resolution, photorealistic.
           `;
 
           const response = await ai.models.generateContent({
@@ -316,6 +357,126 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
                   </>
                 )}
               </AnimatePresence>
+
+          {/* Director's Controls (New) */}
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative">
+            <button 
+              onClick={() => setShowDirectorsControls(!showDirectorsControls)}
+              className="w-full flex items-center justify-between mb-4 text-left"
+            >
+              <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <Layout className="w-5 h-5 text-fuchsia-400" />
+                Director's Controls
+              </h3>
+              <span className="text-[var(--text-secondary)] text-xs">
+                {showDirectorsControls ? 'Hide' : 'Show'}
+              </span>
+            </button>
+            
+            <AnimatePresence>
+              {showDirectorsControls && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden space-y-4"
+                >
+                  {/* Layout Selector */}
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Layout Archetype</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['grid', 'editorial', 'hero', 'collage'] as const).map(type => (
+                        <button
+                          key={type}
+                          onClick={() => setConfig({ ...config, layout: type })}
+                          className={`px-3 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${
+                            config.layout === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Color Strategy Selector */}
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Color Strategy</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['monochromatic', 'contrast', 'minimalist'] as const).map(type => (
+                        <button
+                          key={type}
+                          onClick={() => setConfig({ ...config, colorStrategy: type })}
+                          className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${
+                            config.colorStrategy === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Vibe Selector */}
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Lighting & Vibe</label>
+                     <div className="grid grid-cols-3 gap-2">
+                      {(['studio', 'golden_hour', 'moody'] as const).map(type => (
+                        <button
+                          key={type}
+                          onClick={() => setConfig({ ...config, vibe: type })}
+                          className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${
+                            config.vibe === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'
+                          }`}
+                        >
+                          {type.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                   {/* Typography Selector */}
+                   <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Typography Style</label>
+                    <div className="flex gap-2">
+                      {(['minimal', 'bold'] as const).map(type => (
+                        <button
+                          key={type}
+                          onClick={() => setConfig({ ...config, typography: type })}
+                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${
+                            config.typography === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Slogan Input */}
+                  <div>
+                     <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Campaign Slogan</label>
+                     <input 
+                      type="text" 
+                      value={config.slogan}
+                      onChange={(e) => setConfig({ ...config, slogan: e.target.value })}
+                      placeholder="e.g. Summer of Escapism"
+                      className="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-fuchsia-500 transition-colors"
+                     />
+                  </div>
+
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Upload Area */}
           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative group hover:border-fuchsia-500/50 transition-colors">

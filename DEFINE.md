@@ -1,38 +1,22 @@
-# Definition: Phase 1.1 - True Brand Extraction
+# DEFINE: Implementation Tasks for Director's Mode
 
-## TODO List
+## [Frontend] UI & State Management
+- [ ] **Define `LookbookConfig` Interface:** Create a TypeScript interface for the new settings (layout, lighting, color, slogan).
+- [ ] **Create Configuration Panel Component:**
+    - [ ] Add a collapsible "Director's Controls" section in `LookbookModule.tsx`.
+    - [ ] Implement Layout Selector (Grid, Editorial, Hero, Collage).
+    - [ ] Implement Lighting/Vibe Selector (Studio, Golden Hour, Moody).
+    - [ ] Implement Campaign Slogan input field.
+- [ ] **State Wiring:** Connect the UI inputs to the local component state `config`.
 
-### Backend (`server/`)
-- [ ] **Install Dependencies:**
-    - `npm install axios cheerio` in `server/` directory.
-- [ ] **Create Scraper Service (`server/services/scraper.ts`):**
-    - Implement `scrapeWebsite(url: string)`:
-        - Validate URL.
-        - Fetch HTML using `axios`.
-        - Load into `cheerio`.
-        - Extract metadata (title, description).
-        - Extract all image URLs (`<img src>`) and filter for likely product images (size/aspect ratio checks if possible, or just gather top 20).
-        - Extract visible text content (headers, paragraphs).
-        - Return a `ScrapedData` object.
-- [ ] **Create Extraction Logic (`server/services/extractor.ts`):**
-    - Implement `processWithGemini(scrapedData)`:
-        - Construct a prompt including the scraped metadata and text chunks.
-        - Call `ai.models.generateContent` (Gemini 2.5 Flash).
-        - Enforce JSON output schema matching `BrandAnalysisResult`.
-- [ ] **Add API Route (`server/index.ts`):**
-    - Add `POST /api/extract-brand`.
-    - Call `scraper.scrapeWebsite`.
-    - Call `extractor.processWithGemini`.
-    - Return the structured JSON.
+## [Logic] Prompt Engineering & Integration
+- [ ] **Refactor `generateLookbook` Function:**
+    - [ ] Update function signature or closure to access the `config` state.
+    - [ ] Implement a **Prompt Builder** logic that conditionally adds directives based on `config`.
+    - [ ] **Layout Directive:** "Strict grid alignment" vs "Asymmetrical overlapping".
+    - [ ] **Lighting Directive:** "Bright studio lighting" vs "Warm sunset glow".
+    - [ ] **Text Directive:** Ensure the slogan is explicitly requested in the image generation text.
 
-### Frontend (`src/`)
-- [ ] **Update Generator Utility (`src/utils/brandGenerator.ts`):**
-    - Modify `generateBrandAndCatalog` to attempt fetching from `/api/extract-brand` first.
-    - If the API call returns successfully, map the response to the `BrandVibe` and `CatalogItem[]` structures.
-    - If the API call fails (or returns a specific "blocked" code), fall back to the existing pure-generative logic.
-- [ ] **Error Handling:**
-    - Ensure the `Notification` system reports "Scraping website..." -> "Analyzing content..." -> "Finalizing...".
-
-### Verification
-- [ ] **Local Test:** Run `npm run server` and `npm run dev`. Test with a known "friendly" URL.
-- [ ] **Fallback Test:** Test with a URL known to block scrapers (or a fake URL) to ensure the fallback generator kicks in.
+## [Testing] Verification
+- [ ] **Layout Test:** Generate 4 pages, one for each layout type, and verify visual distinction.
+- [ ] **Lighting Test:** Verify "Golden Hour" produces warm tones vs "Studio" cool/neutral tones.
