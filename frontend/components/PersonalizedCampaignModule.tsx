@@ -39,7 +39,7 @@ interface PersonalizedCampaignModuleProps {
 export const PersonalizedCampaignModule: React.FC<PersonalizedCampaignModuleProps> = ({ brandId, brandVibe, catalog }) => {
   const [selectedPersona, setSelectedPersona] = useState<UserPersona>(MOCK_PERSONAS[0]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [campaign, setCampaign] = useState<{ subject: string, body: string, image: string } | null>(null);
+  const [campaign, setCampaign] = useState<{ subject: string, body: string, image: string, format: string } | null>(null);
   const [cartItems, setCartItems] = useState<CatalogItem[]>([]);
   const [useBrandPdf, setUseBrandPdf] = useState(true);
 
