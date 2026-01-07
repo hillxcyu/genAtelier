@@ -24,8 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Final stage
 FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
 
-# Install Node.js 18 (needed to run Next.js)
-RUN apt-get update && apt-get install -y curl && \
+# Install Node.js 18 and build dependencies for Python packages (like pycairo)
+RUN apt-get update && apt-get install -y curl pkg-config python3-dev libcairo2-dev build-essential && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
@@ -41,7 +41,6 @@ RUN playwright install chromium
 COPY --from=builder /app/frontend/.next ./frontend/.next
 COPY --from=builder /app/frontend/node_modules ./frontend/node_modules
 COPY --from=builder /app/frontend/package.json ./frontend/package.json
-COPY --from=builder /app/frontend/public ./frontend/public
 COPY --from=builder /app/frontend/next.config.js ./frontend/next.config.js
 
 # Copy Startup script
