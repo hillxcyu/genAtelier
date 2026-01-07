@@ -42,8 +42,9 @@ wheels/
 Thumbs.db
 
 # Project specific
+results/
 backend/results/
+backend/venv/
 frontend/.next/
 frontend/node_modules/
 backend/__pycache__/
-backend/venv/
