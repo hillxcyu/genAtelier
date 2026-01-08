@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Upload, Sparkles, Layout, Download, Loader2, Image as ImageIcon, X, FileText, ShoppingBag, CheckCircle, Plus, ArrowLeft, Grid, Edit3 } from 'lucide-react';
+import { BookOpen, Upload, Sparkles, Layout, Download, Loader2, Image as ImageIcon, X, FileText, ShoppingBag, CheckCircle, Plus, ArrowLeft, Grid, Edit3, ChevronDown, Trash2, PackageOpen } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import { ai } from '../utils/genai';
 import { BrandVibe, CatalogItem } from '../types';
@@ -10,22 +10,28 @@ import { getContrastText } from '../utils/color';
 
 type LayoutType = 'grid' | 'editorial' | 'hero' | 'collage';
 type ColorStrategy = 'monochromatic' | 'contrast' | 'minimalist';
-type VibeType = 'studio' | 'golden_hour' | 'moody';
+type LightingType = 'studio' | 'golden_hour' | 'moody' | 'natural';
+type MoodType = 'minimalist' | 'luxury' | 'streetwear' | 'bohemian' | 'romantic';
 type TypographyType = 'minimal' | 'bold';
 type CuratorialStrategy = 'by_color' | 'by_occasion' | 'by_category' | 'by_outfit' | 'eclectic';
 
 interface LookbookConfig {
   layout: LayoutType;
   colorStrategy: ColorStrategy;
-  vibe: VibeType;
-  slogan: string;
+  lighting: LightingType;
+  mood: MoodType;
+  theme: string;
   typography: TypographyType;
 }
 
 interface PageConfig {
   layout: LayoutType;
-  vibe: VibeType;
+  lighting: LightingType;
+  mood: MoodType;
   caption: string;
+  showCaption: boolean;
+  slogan: string;      // Per-page catchy headline
+  showSlogan: boolean; // Toggle for slogan
 }
 
 interface StoryboardPage {
@@ -60,8 +66,9 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
   const [globalConfig, setGlobalConfig] = useState<LookbookConfig>({
     layout: 'editorial',
     colorStrategy: 'minimalist',
-    vibe: 'studio',
-    slogan: '',
+    lighting: 'studio',
+    mood: 'luxury',
+    theme: '',
     typography: 'bold'
   });
   const [curatorialStrategy, setCuratorialStrategy] = useState<CuratorialStrategy>('eclectic');
@@ -72,6 +79,15 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
   const [isDrafting, setIsDrafting] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState<string>('');
+  
+  // "Click-to-Move" State
+  const [movingItem, setMovingItem] = useState<{ pageId: string, productId: string } | null>(null);
+
+  // --- Derived State ---
+  const allAssignedProductIds = new Set(storyboard.flatMap(p => p.productIds));
+  const unassignedProducts = products.filter(p => !allAssignedProductIds.has(p.id));
+
+  const isSidebarVisible = viewMode === 'selection' || (viewMode === 'storyboard' && unassignedProducts.length > 0);
 
   // --- Handlers: Selection ---
 
@@ -135,6 +151,73 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
     }
   };
 
+  // --- Handlers: Storyboard Editing (Click-to-Move) ---
+
+  const handleRemovePage = (pageId: string) => {
+    setStoryboard(prev => prev.filter(p => p.id !== pageId));
+  };
+
+  const handleRemoveItem = (pageId: string, productId: string) => {
+    setStoryboard(prev => prev.map(p => {
+      if (p.id === pageId) {
+        return { ...p, productIds: p.productIds.filter(id => id !== productId) };
+      }
+      return p;
+    }));
+  };
+
+  const handleMoveStart = (pageId: string, productId: string) => {
+    setMovingItem({ pageId, productId });
+  };
+
+  const handleMoveComplete = (targetPageId: string) => {
+    if (!movingItem) return;
+    
+    setStoryboard(prev => {
+        const newBoard = [...prev];
+
+        // If moving from 'unassigned' dock, no source page modification needed
+        if (movingItem.pageId !== 'unassigned') {
+            const sourcePage = newBoard.find(p => p.id === movingItem.pageId);
+            if (sourcePage) {
+                sourcePage.productIds = sourcePage.productIds.filter(id => id !== movingItem.productId);
+            }
+        }
+
+        // Add to target
+        const targetPage = newBoard.find(p => p.id === targetPageId);
+        if (targetPage) {
+            if (!targetPage.productIds.includes(movingItem.productId)) {
+               targetPage.productIds.push(movingItem.productId);
+            }
+        }
+        return newBoard;
+    });
+    setMovingItem(null);
+  };
+
+  const cancelMove = () => setMovingItem(null);
+
+  const handleAddPage = () => {
+    setStoryboard(prev => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        productIds: [],
+        config: {
+          layout: globalConfig.layout,
+          lighting: globalConfig.lighting,
+          mood: globalConfig.mood,
+          caption: '',
+          showCaption: true,
+          slogan: '',
+          showSlogan: true,
+        },
+        status: 'draft',
+      },
+    ]);
+  };
+
   // --- Logic: Draft Storyboard (Gemini Flash) ---
 
   const draftStoryboard = async () => {
@@ -155,10 +238,16 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
 
         Curatorial Strategy: ${curatorialStrategy.replace('_', ' ').toUpperCase()}
         Brand Vibe: ${brandVibe ? brandVibe.mood : 'High Fashion'}
+        Campaign Theme: ${globalConfig.theme || 'None specified.'}
         
         Task:
         Group these items into pages (1-3 items per page). 
-        For each page, suggest a Layout (grid/editorial/hero/collage), a Vibe (studio/golden_hour/moody), and a short creative Caption.
+        For each page, suggest:
+        1. Layout (grid/editorial/hero/collage)
+        2. Lighting style (studio/golden_hour/moody/natural)
+        3. Mood (minimalist/luxury/streetwear/bohemian/romantic)
+        4. A catchy Slogan (headline) based on the Campaign Theme.
+        5. A short descriptive Caption for the products.
         
         Return strictly a JSON object with this structure:
         {
@@ -166,8 +255,10 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
             {
               "productIds": ["id1", "id2"],
               "layout": "editorial",
-              "vibe": "studio",
-              "caption": "Summer Haze"
+              "lighting": "studio",
+              "mood": "luxury",
+              "slogan": "Chasing Sunsets",
+              "caption": "Silk Evening Dress"
             }
           ]
         }
@@ -188,8 +279,12 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
         productIds: p.productIds,
         config: {
           layout: p.layout || globalConfig.layout,
-          vibe: p.vibe || globalConfig.vibe,
-          caption: p.caption || ''
+          lighting: p.lighting || globalConfig.lighting,
+          mood: p.mood || globalConfig.mood,
+          caption: p.caption || '',
+          showCaption: true,
+          slogan: p.slogan || '',
+          showSlogan: true
         },
         status: 'draft'
       }));
@@ -232,17 +327,41 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
         collage: "Mixed-media collage style. Torn edges, layered."
       }[page.config.layout];
 
-      const vibeDirective = {
-        studio: "High-key, bright studio lighting.",
-        golden_hour: "Warm, natural sunlight. Soft shadows.",
-        moody: "Low-key, dramatic, high contrast."
-      }[page.config.vibe];
+      const lightingDirective = {
+        studio: "Lighting: High-key, bright professional studio lighting. Minimal shadows.",
+        golden_hour: "Lighting: Warm, natural 'Golden Hour' sunlight. Soft shadows, warm tones.",
+        moody: "Lighting: Low-key, dramatic, high contrast.",
+        natural: "Lighting: Soft, diffused, natural daylight."
+      }[page.config.lighting];
+
+      const moodDirective = {
+        minimalist: "Mood: Clean, understated, sophisticated, less is more.",
+        luxury: "Mood: Expensive, polished, high-end, elegant.",
+        streetwear: "Mood: Edgy, urban, cool, raw energy.",
+        bohemian: "Mood: Free-spirited, artistic, textured, relaxed.",
+        romantic: "Mood: Soft, dreamy, ethereal, nostalgic."
+      }[page.config.mood];
 
       const colorDirective = {
-        monochromatic: "Monochromatic. Various shades of the brand's primary color.",
-        contrast: "High Contrast. Complementary colors.",
+        monochromatic: "Color Strategy: Monochromatic. Use various shades and tints of the brand's primary color only.",
+        contrast: "Color Strategy: High Contrast. Use complementary colors from the palette to create bold visual impact.",
         minimalist: "Minimalist. White/Beige/Gray backgrounds."
-      }[globalConfig.colorStrategy]; // Use global color strategy for consistency
+      }[globalConfig.colorStrategy]; 
+
+      const typoDirective = globalConfig.typography === 'bold' ? "Typography: Bold, large headlines. Magazine style." : "Typography: Minimal, small, sans-serif text only.";
+
+      // Narrative Directives based on showSlogan / showCaption
+      const themeGuideline = globalConfig.theme 
+        ? `Campaign Theme Guideline: ${globalConfig.theme}. Use this to guide the visual narrative.` 
+        : '';
+
+      const sloganDirective = page.config.showSlogan
+        ? `Headline Text: Include the slogan "${page.config.slogan}" as a prominent design element.`
+        : 'Do not include a headline slogan.';
+
+      const captionDirective = page.config.showCaption
+        ? `Caption Text: Include the product description "${page.config.caption}" in small, elegant type.`
+        : 'Do not include the product description text.';
 
       const prompt = `
         Create a high-fashion lookbook page.
@@ -250,9 +369,13 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
         
         CONFIG:
         Layout: ${layoutDirective}
-        Lighting: ${vibeDirective}
+        Lighting: ${lightingDirective}
+        Mood: ${moodDirective}
         Color: ${colorDirective}
-        Caption: Include the text "${page.config.caption}" elegantly.
+        Typography: ${typoDirective}
+        Narrative Context: ${themeGuideline}
+        ${sloganDirective}
+        ${captionDirective}
         
         Directives:
         - Integrate provided products seamlessly.
@@ -280,31 +403,35 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
 
   const renderStoryboard = async () => {
     setIsRendering(true);
-    let completed = 0;
     
     // Process pages that are not yet completed
     const pagesToRender = storyboard.filter(p => p.status !== 'completed');
-    setProgress(`Rendering ${pagesToRender.length} pages...`);
-
-    // We can render in parallel batches of 3 to avoid rate limits/overload? 
-    // Or just Promise.all for speed if API allows. Let's do Promise.all for now.
+    if (pagesToRender.length === 0) {
+        setIsRendering(false);
+        return;
+    }
     
-    const results = await Promise.all(storyboard.map(async (page) => {
-      if (page.status === 'completed') return page;
-      
-      // Update status to rendering (locally purely visual) 
-      
+    let completedCount = 0;
+    setProgress(`Starting render of ${pagesToRender.length} pages...`);
+
+    const updatePageStatus = (pageId: string, status: 'rendering' | 'completed' | 'failed', resultUrl?: string) => {
+        setStoryboard(prev => prev.map(p => 
+            p.id === pageId ? { ...p, status, resultUrl } : p
+        ));
+    };
+
+    setStoryboard(prev => prev.map(p => 
+        pagesToRender.find(target => target.id === p.id) ? { ...p, status: 'rendering' } : p
+    ));
+
+    await Promise.all(pagesToRender.map(async (page) => {
       const url = await renderPage(page);
-      if (url) {
-        completed++;
-        setProgress(`Rendering... (${completed}/${pagesToRender.length})`);
-        return { ...page, status: 'completed' as const, resultUrl: url };
-      } else {
-        return { ...page, status: 'failed' as const };
-      }
+      completedCount++;
+      setProgress(`Rendering... (${completedCount}/${pagesToRender.length})`);
+      if (url) updatePageStatus(page.id, 'completed', url);
+      else updatePageStatus(page.id, 'failed');
     }));
 
-    setStoryboard(results);
     setIsRendering(false);
     setProgress('');
   };
@@ -327,139 +454,205 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
   const renderSidebar = () => (
     <div className="lg:col-span-4 space-y-6 relative">
       
-      {/* Directors Controls */}
+      {/* Directors Controls - Show only in selection mode */}
       {viewMode === 'selection' && (
         <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative">
-          <button 
-              onClick={() => setShowDirectorsControls(!showDirectorsControls)}
-              className="w-full flex items-center justify-between mb-4 text-left"
-            >
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                <Layout className="w-5 h-5 text-fuchsia-400" />
-                Director's Controls
-              </h3>
-              <span className="text-[var(--text-secondary)] text-xs">
-                {showDirectorsControls ? 'Hide' : 'Show'}
-              </span>
-            </button>
-            
-            <AnimatePresence>
-              {showDirectorsControls && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden space-y-4"
-                >
-                  {/* Curatorial Strategy */}
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Curatorial Strategy</label>
-                    <div className="grid grid-cols-2 gap-2">
-                       {(['by_color', 'by_occasion', 'by_category', 'by_outfit', 'eclectic'] as const).map(s => (
-                         <button
-                           key={s}
-                           onClick={() => setCuratorialStrategy(s)}
-                           className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${curatorialStrategy === s 
-                             ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
-                             : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
-                         >
-                           {s.replace('_', ' ')}
-                         </button>
-                       ))}
+            <button 
+                onClick={() => setShowDirectorsControls(!showDirectorsControls)}
+                className="w-full flex items-center justify-between mb-4 text-left"
+              >
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <Layout className="w-5 h-5 text-fuchsia-400" />
+                  Creative Director
+                </h3>
+                <span className="text-[var(--text-secondary)] text-xs">
+                  {showDirectorsControls ? 'Hide' : 'Show'}
+                </span>
+              </button>
+              
+              <AnimatePresence>
+                {showDirectorsControls && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden space-y-4"
+                  >
+                    {/* Curatorial Strategy */}
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Curatorial Strategy</label>
+                      <div className="grid grid-cols-2 gap-2">
+                         {(['by_color', 'by_occasion', 'by_category', 'by_outfit', 'eclectic'] as const).map(s => (
+                           <button
+                             key={s}
+                             onClick={() => setCuratorialStrategy(s)}
+                             className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${curatorialStrategy === s 
+                               ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                               : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
+                           >
+                             {s.replace('_', ' ')}
+                           </button>
+                         ))}
+                      </div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 ml-1">
+                        {{
+                          by_color: "Group items into monochromatic color stories.",
+                          by_occasion: "Organize products by intended use (e.g., casual, formal, active).",
+                          by_category: "Standard merchandising (Tops, Bottoms).",
+                          by_outfit: "Create complete, wearable looks per page.",
+                          eclectic: "High-fashion mix for maximum visual impact."
+                        }[curatorialStrategy]}
+                      </p>
                     </div>
-                  </div>
 
-                  {/* Layout Defaults */}
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Default Layout</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(['grid', 'editorial', 'hero', 'collage'] as const).map(type => (
-                        <button
-                          key={type}
-                          onClick={() => setGlobalConfig({ ...globalConfig, layout: type })}
-                          className={`px-3 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${globalConfig.layout === type 
-                            ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
-                            : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
-                        >
-                          {type}
-                        </button>
-                      ))}
+                    {/* Layout Defaults */}
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Default Layout</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['grid', 'editorial', 'hero', 'collage'] as const).map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setGlobalConfig({ ...globalConfig, layout: type })}
+                            className={`px-3 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${globalConfig.layout === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 ml-1">
+                        {{
+                          grid: "Symmetrical, product-focused layout.",
+                          editorial: "Asymmetrical, artistic layout with overlap.",
+                          hero: "One large hero image with smaller details.",
+                          collage: "Mixed-media, layered scrapbook style."
+                        }[globalConfig.layout]}
+                      </p>
                     </div>
-                  </div>
 
-                   {/* Color Strategy Selector */}
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Color Strategy</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['monochromatic', 'contrast', 'minimalist'] as const).map(type => (
-                        <button
-                          key={type}
-                          onClick={() => setGlobalConfig({ ...globalConfig, colorStrategy: type })}
-                          className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${globalConfig.colorStrategy === type 
-                            ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
-                            : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
-                        >
-                          {type}
-                        </button>
-                      ))}
+                     {/* Color Strategy Selector */}
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Color Strategy</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['monochromatic', 'contrast', 'minimalist'] as const).map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setGlobalConfig({ ...globalConfig, colorStrategy: type })}
+                            className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${globalConfig.colorStrategy === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 ml-1">
+                        {{
+                          monochromatic: "Shades of a single brand color.",
+                          contrast: "High-impact complementary colors.",
+                          minimalist: "Clean white/neutral background."
+                        }[globalConfig.colorStrategy]}
+                      </p>
                     </div>
-                  </div>
 
-                   {/* Vibe Selector */}
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Lighting & Vibe</label>
-                     <div className="grid grid-cols-3 gap-2">
-                      {(['studio', 'golden_hour', 'moody'] as const).map(type => (
-                        <button
-                          key={type}
-                          onClick={() => setGlobalConfig({ ...globalConfig, vibe: type })}
-                          className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${globalConfig.vibe === type 
-                            ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
-                            : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
-                        >
-                          {type.replace('_', ' ')}
-                        </button>
-                      ))}
+                     {/* Lighting Selector */}
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Lighting</label>
+                       <div className="grid grid-cols-2 gap-2">
+                        {(['studio', 'golden_hour', 'moody', 'natural'] as const).map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setGlobalConfig({ ...globalConfig, lighting: type })}
+                            className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${globalConfig.lighting === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
+                          >
+                            {type.replace('_', ' ')}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 ml-1">
+                        {{
+                          studio: "Bright, high-key professional lighting.",
+                          golden_hour: "Warm, natural sunlight and soft shadows.",
+                          moody: "Dark, dramatic, high-contrast lighting.",
+                          natural: "Soft, diffused, natural daylight."
+                        }[globalConfig.lighting]}
+                      </p>
                     </div>
-                  </div>
 
-                   {/* Typography Selector */}
-                   <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Typography Style</label>
-                    <div className="flex gap-2">
-                      {(['minimal', 'bold'] as const).map(type => (
-                        <button
-                          key={type}
-                          onClick={() => setGlobalConfig({ ...globalConfig, typography: type })}
-                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${globalConfig.typography === type 
-                            ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
-                            : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
-                        >
-                          {type}
-                        </button>
-                      ))}
+                     {/* Mood Selector */}
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Mood</label>
+                       <div className="grid grid-cols-2 gap-2">
+                        {(['minimalist', 'luxury', 'streetwear', 'bohemian', 'romantic'] as const).map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setGlobalConfig({ ...globalConfig, mood: type })}
+                            className={`px-2 py-2 rounded-lg text-[10px] font-medium capitalize border transition-all ${globalConfig.mood === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 ml-1">
+                        {{
+                          minimalist: "Clean, understated, sophisticated.",
+                          luxury: "Expensive, polished, high-end.",
+                          streetwear: "Edgy, urban, cool, raw energy.",
+                          bohemian: "Free-spirited, artistic, textured.",
+                          romantic: "Soft, dreamy, ethereal, nostalgic."
+                        }[globalConfig.mood]}
+                      </p>
                     </div>
-                  </div>
 
-                  {/* Slogan Input */}
-                  <div>
-                     <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Campaign Slogan</label>
-                     <input 
-                      type="text" 
-                      value={globalConfig.slogan}
-                      onChange={(e) => setGlobalConfig({ ...globalConfig, slogan: e.target.value })}
-                      placeholder="e.g. Summer of Escapism"
-                      className="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-fuchsia-500 transition-colors"
-                     />
-                  </div>
+                     {/* Typography Selector */}
+                     <div>
+                      <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Typography Style</label>
+                      <div className="flex gap-2">
+                        {(['minimal', 'bold'] as const).map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setGlobalConfig({ ...globalConfig, typography: type })}
+                            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${globalConfig.typography === type 
+                              ? 'bg-fuchsia-600/20 border-fuchsia-600 text-fuchsia-400' 
+                              : 'bg-[var(--input-bg)] border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-border)]'}`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 ml-1">
+                        {{
+                          minimal: "Clean, small sans-serif text.",
+                          bold: "Large, magazine-style headlines."
+                        }[globalConfig.typography]}
+                      </p>
+                    </div>
 
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    {/* Campaign Theme Input */}
+                    <div>
+                       <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Campaign Theme</label>
+                       <input 
+                        type="text" 
+                        value={globalConfig.theme}
+                        onChange={(e) => setGlobalConfig({ ...globalConfig, theme: e.target.value })}
+                        placeholder="e.g. Summer of Escapism"
+                        className="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-fuchsia-500 transition-colors"
+                       />
+                    </div>
+
+                  </motion.div>
+                )}
+              </AnimatePresence>
         </div>
       )}
 
-      {/* Collection Upload */}
+      {/* Collection Upload - Show only in selection mode */}
+      {viewMode === 'selection' && (
        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative group hover:border-fuchsia-500/50 transition-colors">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -528,8 +721,52 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
               </div>
             )}
       </div>
+      )}
 
-          {/* Instructions */}
+      {/* Unassigned Items Dock - Show only in storyboard mode */}
+      {viewMode === 'storyboard' && unassignedProducts.length > 0 && (
+         <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 relative">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+              <PackageOpen className="w-5 h-5 text-yellow-400" />
+              Unassigned Items
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              These items are not on any page. Click to move them to a storyboard page.
+            </p>
+            
+            <div className="grid grid-cols-3 gap-3">
+              {unassignedProducts.map(p => (
+                <div 
+                  key={p.id} 
+                  onClick={() => handleMoveStart('unassigned', p.id)}
+                  className={`aspect-square rounded-lg overflow-hidden relative group border cursor-pointer transition-all ${ 
+                    movingItem?.productId === p.id 
+                    ? 'border-fuchsia-500 ring-2 ring-fuchsia-500/50' 
+                    : 'border-[var(--card-border)] hover:border-fuchsia-400'
+                  }`}
+                >
+                  <img src={p.url} className="w-full h-full object-cover" />
+                  
+                  {/* Overlay for selection indication */}
+                  {movingItem?.productId === p.id && (
+                    <div className="absolute inset-0 bg-fuchsia-500/20 flex items-center justify-center">
+                       <CheckCircle className="w-6 h-6 text-white drop-shadow-md" />
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-xs text-white font-medium flex items-center gap-1">
+                      <ArrowLeft className="w-3 h-3" /> Move
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+         </div>
+      )}
+
+          {/* Instructions - Show only in selection mode */}
+          {viewMode === 'selection' && (
           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6">
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
               <Layout className="w-4 h-4 text-purple-400" />
@@ -543,6 +780,7 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
               <li>Export the final collection as a PDF.</li>
             </ul>
           </div>
+          )}
         </div>
   );
 
@@ -554,10 +792,10 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8">
-        {renderSidebar()}
+        {isSidebarVisible && renderSidebar()}
 
         {/* Main Content Area */}
-        <div className="lg:col-span-8">
+        <div className={isSidebarVisible ? "lg:col-span-8" : "lg:col-span-12"}>
            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-2 min-h-[800px] flex flex-col">
              
              {/* Header */}
@@ -570,7 +808,13 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
                  )}
                </div>
                {viewMode === 'storyboard' && (
-                 <div className="flex gap-2">
+                 <div className="flex gap-2 relative">
+                    <button
+                      onClick={handleAddPage}
+                      className="text-xs px-3 py-1.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-500 disabled:opacity-50 inline-flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> New Page
+                    </button>
                     <button
                       onClick={renderStoryboard}
                       disabled={isRendering}
@@ -604,24 +848,74 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
                 {viewMode === 'storyboard' && (
                   <div className="grid grid-cols-1 gap-8 relative z-10">
                     {storyboard.map((page, index) => (
-                      <div key={page.id} className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl overflow-hidden shadow-sm">
+                      <div 
+                        key={page.id} 
+                        className={`bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl overflow-hidden shadow-sm transition-colors relative ${movingItem && movingItem.pageId !== page.id ? 'border-dashed border-fuchsia-500/50 bg-fuchsia-500/5' : ''}`}
+                        onClick={() => movingItem && movingItem.pageId !== page.id && handleMoveComplete(page.id)}
+                      >
+                        {movingItem && movingItem.pageId !== page.id && (
+                            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
+                                <div className="bg-fuchsia-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
+                                    <ArrowLeft className="w-4 h-4" /> Move Here
+                                </div>
+                            </div>
+                        )}
                         
                         {/* Status Header */}
                         <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--card-border)] bg-[var(--input-bg)]">
-                           <span className="text-xs font-bold text-[var(--text-secondary)]">Page {index + 1}</span>
-                           <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${page.status === 'completed' ? 'bg-green-500/20 text-green-400' : page.status === 'draft' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                             {page.status}
-                           </span>
+                           <div className="flex items-center gap-3">
+                             <span className="text-xs font-bold text-[var(--text-secondary)]">Page {index + 1}</span>
+                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${page.status === 'completed' ? 'bg-green-500/20 text-green-400' : page.status === 'draft' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                               {page.status}
+                             </span>
+                           </div>
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); handleRemovePage(page.id); }}
+                             className="text-[var(--text-secondary)] hover:text-red-400 p-1"
+                             title="Remove Page"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </button>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-0">
                            {/* Config Side */}
                            <div className="p-4 border-r border-[var(--card-border)] space-y-3">
                               {/* Thumbnails */}
-                              <div className="flex gap-2 overflow-x-auto pb-2">
+                              <div className="flex gap-2 overflow-x-auto pb-2 min-h-[50px]">
                                 {products.filter(p => page.productIds.includes(p.id)).map(p => (
-                                  <img key={p.id} src={p.url} className="w-10 h-10 rounded-md object-cover border border-[var(--card-border)]" />
+                                  <div 
+                                    key={p.id} 
+                                    className={`relative group flex-shrink-0 cursor-pointer transition-all ${movingItem?.productId === p.id ? 'ring-2 ring-fuchsia-500 scale-105' : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); handleMoveStart(page.id, p.id); }}
+                                  >
+                                    <img src={p.url} className="w-10 h-10 rounded-md object-cover border border-[var(--card-border)]" />
+                                    
+                                    {!movingItem && (
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded-md">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleMoveStart(page.id, p.id); }}
+                                                className="text-white hover:text-fuchsia-400 p-1"
+                                                title="Move Item"
+                                            >
+                                                <ArrowLeft className="w-3 h-3" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleRemoveItem(page.id, p.id); }}
+                                                className="text-white hover:text-red-400 p-1"
+                                                title="Remove Item"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                  </div>
                                 ))}
+                                {page.productIds.length === 0 && (
+                                  <div className="text-[10px] text-[var(--text-tertiary)] italic flex items-center">
+                                    Empty Page
+                                  </div>
+                                )}
                               </div>
                               
                               <div className="grid grid-cols-2 gap-2">
@@ -643,12 +937,12 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="text-[10px] text-[var(--text-secondary)] uppercase">Vibe</label>
+                                  <label className="text-[10px] text-[var(--text-secondary)] uppercase">Lighting</label>
                                   <select 
-                                    value={page.config.vibe}
+                                    value={page.config.lighting}
                                     onChange={(e) => {
                                       const newBoard = [...storyboard];
-                                      newBoard[index].config.vibe = e.target.value as VibeType;
+                                      newBoard[index].config.lighting = e.target.value as LightingType;
                                       setStoryboard(newBoard);
                                     }}
                                     className="w-full text-xs bg-[var(--input-bg)] text-[var(--text-primary)] rounded p-1 border border-[var(--card-border)]"
@@ -656,22 +950,88 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
                                     <option value="studio">Studio</option>
                                     <option value="golden_hour">Golden Hour</option>
                                     <option value="moody">Moody</option>
+                                    <option value="natural">Natural</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-[var(--text-secondary)] uppercase">Mood</label>
+                                  <select 
+                                    value={page.config.mood}
+                                    onChange={(e) => {
+                                      const newBoard = [...storyboard];
+                                      newBoard[index].config.mood = e.target.value as MoodType;
+                                      setStoryboard(newBoard);
+                                    }}
+                                    className="w-full text-xs bg-[var(--input-bg)] text-[var(--text-primary)] rounded p-1 border border-[var(--card-border)]"
+                                  >
+                                    <option value="minimalist">Minimalist</option>
+                                    <option value="luxury">Luxury</option>
+                                    <option value="streetwear">Streetwear</option>
+                                    <option value="bohemian">Bohemian</option>
+                                    <option value="romantic">Romantic</option>
                                   </select>
                                 </div>
                               </div>
 
-                              <div>
-                                <label className="text-[10px] text-[var(--text-secondary)] uppercase">Caption</label>
-                                <input 
-                                  type="text"
-                                  value={page.config.caption}
-                                  onChange={(e) => {
-                                      const newBoard = [...storyboard];
-                                      newBoard[index].config.caption = e.target.value;
-                                      setStoryboard(newBoard);
-                                  }}
-                                  className="w-full text-xs bg-[var(--input-bg)] text-[var(--text-primary)] rounded p-1 border border-[var(--card-border)]"
-                                />
+                              <div className="space-y-3 pt-2 border-t border-[var(--card-border)]">
+                                {/* Slogan Toggle & Input */}
+                                <div>
+                                    <label className="text-[10px] text-[var(--text-secondary)] uppercase flex items-center gap-2 mb-1 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        checked={page.config.showSlogan}
+                                        onChange={(e) => {
+                                            const newBoard = [...storyboard];
+                                            newBoard[index].config.showSlogan = e.target.checked;
+                                            setStoryboard(newBoard);
+                                        }}
+                                        className="rounded border-[var(--card-border)] bg-[var(--input-bg)] text-fuchsia-600 focus:ring-fuchsia-500"
+                                    />
+                                    Show Slogan
+                                    </label>
+                                    {page.config.showSlogan && (
+                                        <input 
+                                        type="text"
+                                        value={page.config.slogan}
+                                        onChange={(e) => {
+                                            const newBoard = [...storyboard];
+                                            newBoard[index].config.slogan = e.target.value;
+                                            setStoryboard(newBoard);
+                                        }}
+                                        placeholder="Page Slogan"
+                                        className="w-full text-xs bg-[var(--input-bg)] text-[var(--text-primary)] rounded p-1 border border-[var(--card-border)] placeholder:text-[var(--text-tertiary)] font-bold"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Caption Toggle & Input */}
+                                <div>
+                                    <label className="text-[10px] text-[var(--text-secondary)] uppercase flex items-center gap-2 mb-1 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        checked={page.config.showCaption}
+                                        onChange={(e) => {
+                                            const newBoard = [...storyboard];
+                                            newBoard[index].config.showCaption = e.target.checked;
+                                            setStoryboard(newBoard);
+                                        }}
+                                        className="rounded border-[var(--card-border)] bg-[var(--input-bg)] text-fuchsia-600 focus:ring-fuchsia-500"
+                                    />
+                                    Show Caption
+                                    </label>
+                                    {page.config.showCaption && (
+                                        <input 
+                                        type="text"
+                                        value={page.config.caption}
+                                        onChange={(e) => {
+                                            const newBoard = [...storyboard];
+                                            newBoard[index].config.caption = e.target.value;
+                                            setStoryboard(newBoard);
+                                        }}
+                                        className="w-full text-xs bg-[var(--input-bg)] text-[var(--text-primary)] rounded p-1 border border-[var(--card-border)]"
+                                        />
+                                    )}
+                                </div>
                               </div>
                            </div>
 
@@ -690,6 +1050,16 @@ export const LookbookModule: React.FC<LookbookModuleProps> = ({ brandVibe, catal
 
                       </div>
                     ))}
+
+                    {/* Add New Page Button */}
+                    <div className="p-4 text-center">
+                        <button 
+                            onClick={handleAddPage}
+                            className="inline-flex items-center px-4 py-2 border border-dashed border-[var(--card-border)] text-sm font-medium rounded-md text-[var(--text-secondary)] hover:bg-[var(--input-bg)] hover:border-fuchsia-500 transition-colors"
+                        >
+                            <Plus className="w-4 h-4 mr-2" /> Add New Page
+                        </button>
+                    </div>
                   </div>
                 )}
              </div>
