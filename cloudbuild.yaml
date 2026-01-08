@@ -1,21 +1,30 @@
 steps:
   # 1. Build App Image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:latest', '.']
+    args: ['build', '-t', 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:$COMMIT_SHA', '.']
 
   # 2. Build Scraper Image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/vital-octagon-19612/gen-fashion-scraper:latest', 'scraper-service']
+    args: ['build', '-t', 'gcr.io/vital-octagon-19612/gen-fashion-scraper:$COMMIT_SHA', 'scraper-service']
 
   # 3. Push App Image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:latest']
+    args: ['push', 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:$COMMIT_SHA']
 
   # 4. Push Scraper Image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/vital-octagon-19612/gen-fashion-scraper:latest']
+    args: ['push', 'gcr.io/vital-octagon-19612/gen-fashion-scraper:$COMMIT_SHA']
 
-  # 5. Deploy to Cloud Run using service.yaml
+  # 5. Prepare service.yaml with correct image tags
+  - name: 'ubuntu'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        sed -i "s|gen-fashion-atelier-uat:latest|gen-fashion-atelier-uat:$COMMIT_SHA|g" service.yaml
+        sed -i "s|gen-fashion-scraper:latest|gen-fashion-scraper:$COMMIT_SHA|g" service.yaml
+
+  # 6. Deploy to Cloud Run using service.yaml
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -26,5 +35,5 @@ steps:
       - '--region=us-central1'
 
 images:
-  - 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:latest'
-  - 'gcr.io/vital-octagon-19612/gen-fashion-scraper:latest'
+  - 'gcr.io/vital-octagon-19612/gen-fashion-atelier-uat:$COMMIT_SHA'
+  - 'gcr.io/vital-octagon-19612/gen-fashion-scraper:$COMMIT_SHA'

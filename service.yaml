@@ -4,6 +4,8 @@ metadata:
   name: gen-fashion-atelier-uat
   labels:
     cloud.googleapis.com/location: us-central1
+  annotations:
+    run.googleapis.com/iap-enabled: 'true' # This line enables IAP
 spec:
   template:
     metadata:
