@@ -1,38 +1,26 @@
-# Definition: Phase 1.1 - True Brand Extraction
+# DEFINE: Implementation Tasks for AI Storyboard
 
-## TODO List
+## [Frontend] State & Types
+- [ ] **Define Interfaces:** `StoryboardPage`, `PageConfig`, `CuratorialStrategy`.
+- [ ] **State Management:** Add `storyboard` (array of pages) and `viewMode` ('selection' | 'storyboard') to `LookbookModule`.
 
-### Backend (`server/`)
-- [ ] **Install Dependencies:**
-    - `npm install axios cheerio` in `server/` directory.
-- [ ] **Create Scraper Service (`server/services/scraper.ts`):**
-    - Implement `scrapeWebsite(url: string)`:
-        - Validate URL.
-        - Fetch HTML using `axios`.
-        - Load into `cheerio`.
-        - Extract metadata (title, description).
-        - Extract all image URLs (`<img src>`) and filter for likely product images (size/aspect ratio checks if possible, or just gather top 20).
-        - Extract visible text content (headers, paragraphs).
-        - Return a `ScrapedData` object.
-- [ ] **Create Extraction Logic (`server/services/extractor.ts`):**
-    - Implement `processWithGemini(scrapedData)`:
-        - Construct a prompt including the scraped metadata and text chunks.
-        - Call `ai.models.generateContent` (Gemini 2.5 Flash).
-        - Enforce JSON output schema matching `BrandAnalysisResult`.
-- [ ] **Add API Route (`server/index.ts`):**
-    - Add `POST /api/extract-brand`.
-    - Call `scraper.scrapeWebsite`.
-    - Call `extractor.processWithGemini`.
-    - Return the structured JSON.
+## [Logic] The "Drafter" Service (Gemini Flash)
+- [ ] **Implement `draftStoryboard`:**
+    *   Input: `selectedItems`, `groupingStrategy`, `globalConfig`.
+    *   Prompt: "Group these items into pages based on [Strategy]. Return JSON with item IDs assigned to pages, plus a suggested layout and caption for each page."
+    *   Parsing: Convert the AI response into the `StoryboardPage[]` state.
 
-### Frontend (`src/`)
-- [ ] **Update Generator Utility (`src/utils/brandGenerator.ts`):**
-    - Modify `generateBrandAndCatalog` to attempt fetching from `/api/extract-brand` first.
-    - If the API call returns successfully, map the response to the `BrandVibe` and `CatalogItem[]` structures.
-    - If the API call fails (or returns a specific "blocked" code), fall back to the existing pure-generative logic.
-- [ ] **Error Handling:**
-    - Ensure the `Notification` system reports "Scraping website..." -> "Analyzing content..." -> "Finalizing...".
+## [Frontend] The Storyboard Editor UI
+- [ ] **"Drafting" Controls:** Add the "Curatorial Strategy" selector to the initial selection view.
+- [ ] **Storyboard Grid:** Create a view that displays the list of `StoryboardPage` objects.
+- [ ] **Page Card Component:**
+    *   Display thumbnails of items on that page.
+    *   Show/Edit Layout and Vibe dropdowns (per page).
+    *   Show/Edit Caption input.
+    *   "Render Page" button (or global Render).
 
-### Verification
-- [ ] **Local Test:** Run `npm run server` and `npm run dev`. Test with a known "friendly" URL.
-- [ ] **Fallback Test:** Test with a URL known to block scrapers (or a fake URL) to ensure the fallback generator kicks in.
+## [Logic] The Renderer
+- [ ] **Refactor `generateLookbook`:**
+    *   Update it to accept `StoryboardPage[]` instead of raw chunks.
+    *   Iterate through the pages, generating only those marked for rendering.
+    *   Use the *page-specific* config for the prompt, overriding global defaults if needed.
