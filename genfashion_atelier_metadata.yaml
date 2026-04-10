@@ -1,0 +1,35 @@
+purpose: GenFashion Atelier is an AI-powered creative workspace designed to revolutionize
+  the fashion workflow. By leveraging Google's Gemini models, it enables brands to
+  ingest their catalog, generate high-fidelity virtual try-ons, create automated lookbooks,
+  and launch personalized marketing campaigns.
+products:
+- vertex_ai
+- cloud_run
+- gemini_api
+- generative_ai_on_vertex_ai
+title: GenFashion Atelier
+type: application
+industries:
+- Retail
+- Consumer Goods
+technical_value: This demo showcases a multi-modal Generative AI application architecture
+  on Google Cloud. It utilizes Vertex AI's Gemini models for image generation, text
+  processing, and logical reasoning. The application is containerized and deployed
+  on Cloud Run using a multi-container pattern, demonstrating scalable serverless
+  deployment.
+demo_guide: https://gitlab.com/google-cloud-ce/googlers/xcyu/genAtelier/-/blob/main/README.md
+owner: xcyu
+file_type: demo
+content_restriction_labels: []
+thumbnail_summary: 'AI-powered workspace for fashion: virtual try-on, lookbooks, and
+  campaigns.'
+business_value: GenFashion Atelier significantly reduces the time and cost associated
+  with traditional fashion photoshoots and marketing campaign creation. By automating
+  virtual try-ons, lookbook generation, and personalized content creation, it enables
+  brands to launch products faster and deliver highly personalized customer experiences,
+  driving higher engagement and conversion rates.
+artifacts:
+- title: Code Repository
+  link: https://gitlab.com/google-cloud-ce/googlers/xcyu/genAtelier
+- link: https://gen-fashion-atelier-440790012685.us-central1.run.app
+  title: Live Demo

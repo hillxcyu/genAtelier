@@ -162,6 +162,13 @@ app.get('/api/proxy-image', async (req, res) => {
 // Serve static files from the React app if available
 const distPath = path.join(__dirname, '../dist');
 const indexPath = path.join(distPath, 'index.html');
+const dummyPath = path.join(__dirname, '../dummy-retailer');
+
+// Serve Dummy Retailer Site for Demos
+if (fs.existsSync(dummyPath)) {
+  console.log(`[Demo] Serving dummy retailer from ${dummyPath}`);
+  app.use('/dummy-retailer', express.static(dummyPath));
+}
 
 if (fs.existsSync(indexPath)) {
   app.use(express.static(distPath));
