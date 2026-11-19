@@ -1,7 +1,15 @@
 node_modules/
 build/
 dist/
+dist-server/
+.vite/
 coverage/
 .DS_Store
 *.log
 .env*
+prada*.html
+GEMINI.md
+.gcloudignore
+*.tfstate
+*.tfstate.*
+.terraform/

@@ -22,7 +22,7 @@ interface BrandPalette {
 }
 
 interface BrandVibe {
-  name: string;          // Extracted Brand Name (e.g., "Prada")
+  name: string;          // Extracted Brand Name (e.g., "Lumina Voile")
   mood: string;          // A short, evocative description (e.g., "Minimalist Luxury")
   palette: BrandPalette; // Structured color palette with defined roles
   font: string;          // A description of the typography style (e.g., "Serif, Modern")
@@ -33,7 +33,7 @@ interface BrandVibe {
 ## 2. Architecture & Data Flow
 
 ### Step 1: Client Request
-*   **Trigger:** User enters a URL (e.g., `https://www.prada.com`) in the frontend `IngestionModule`.
+*   **Trigger:** User enters a URL (e.g., `https://www.example-fashion.com`) in the frontend `IngestionModule`.
 *   **Action:** Frontend sends a `POST /api/extract-brand` request with the URL.
 
 ### Step 2: Backend Orchestration (`server/index.ts`, `server/services/scraper.ts`, & `scraper-service/index.js`)

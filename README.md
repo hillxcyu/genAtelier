@@ -80,20 +80,23 @@ Generates targeted marketing assets for specific user segments.
 
 ### Deployment to Google Cloud Run
 
-Deployment is handled via **Google Cloud Build** using the `cloudbuild.yaml` and `service.yaml` configurations, enabling a multi-container Cloud Run service.
+For automated, Argolis-compliant provisioning (multi-container Cloud Run + External HTTPS Load Balancer + IAP + least-privilege runtime SA), use the Terraform configuration in [`click-to-deploy/`](click-to-deploy/) and follow the full walkthrough in [`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md).
+
+Manual deployment is also supported via **Google Cloud Build** using `cloudbuild.yaml` and `service.yaml`:
 
 #### 1. Configure GCP Project
-Ensure your GCP project (`vital-octagon-19612` by default as per `service.yaml` and `cloudbuild.yaml`) has:
-*   **Cloud Run API** enabled.
-*   **Cloud Build API** enabled.
-*   **Artifact Registry API** enabled.
-*   The Cloud Build Service Account (`[PROJECT_NUMBER]@cloudbuild.gserviceaccount.com`) has the following IAM roles:
-    *   `Cloud Run Admin`
-    *   `Service Account User` (for the runtime service account: `440790012685-compute@developer.gserviceaccount.com`)
-    *   `Artifact Registry Writer`
+Ensure your target GCP project (`YOUR_PROJECT_ID`) has:
+*   **Cloud Run API** (`run.googleapis.com`) enabled.
+*   **Cloud Build API** (`cloudbuild.googleapis.com`) enabled.
+*   **Artifact Registry API** (`artifactregistry.googleapis.com`) enabled.
+*   **Vertex AI API** (`aiplatform.googleapis.com`) enabled.
+*   The Cloud Build Service Account (`YOUR_PROJECT_NUMBER@cloudbuild.gserviceaccount.com`) has:
+    *   `roles/run.admin`
+    *   `roles/iam.serviceAccountUser`
+    *   `roles/artifactregistry.writer`
 
 #### 2. Service Account Permissions
-Your `service.yaml` specifies `440790012685-compute@developer.gserviceaccount.com` as the runtime service account. This account **must** have `roles/aiplatform.user` to access Vertex AI models (Gemini).
+Update `YOUR_RUNTIME_SERVICE_ACCOUNT` in `service.yaml` to a dedicated least-privilege service account with `roles/aiplatform.user` to access Vertex AI Gemini models.
 
 #### 3. Triggering the Deployment
 

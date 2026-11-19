@@ -1,0 +1,58 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+file_type: demo
+type: application
+title: GenFashion Atelier AI Creative Studio for Fashion Retail
+thumbnail_summary: Automate virtual try-on, brand DNA extraction, lookbooks, and personalized campaigns for fashion retail using Vertex AI Gemini models and Cloud Run.
+purpose: |
+  Built for **Chief Digital Officers, Merchandising VPs, and Retail Creative Directors**, this interactive application demonstrates how to eliminate weeks-long studio photoshoot and campaign localization bottlenecks across seasonal fashion drops.
+
+  During a live customer pitch, sellers ingest a live retailer storefront URL to dynamically recalibrate the studio theme and catalog, walk shoppers through photorealistic virtual try-on with AI styling cross-sells, transform flat-lay shots into editorial on-model photography, and generate persona-targeted campaigns in minutes.
+business_value: |
+  * **Compress Creative Time-to-Market:** Shrinks seasonal lookbook, editorial model photography, and campaign asset production from 4–6 weeks of physical studio shoots to under 5 minutes.
+  * **Lift E-Commerce Conversion & Basket Size:** Combines photorealistic virtual try-on with real-time AI outfit recommendations to reduce fit uncertainty and drive multi-item cart additions.
+  * **Scale Hyper-Personalized Merchandising:** Adapts visual creative and marketing copy instantaneously across distinct shopper personas while maintaining strict brand aesthetic consistency.
+technical_value: |
+  * **Multimodal Brand DNA Extraction:** Pairs a Puppeteer Stealth sidecar with Gemini Flash structured JSON output to parse live storefront HTML into a 5-role color palette, typography, mood, and product catalog.
+  * **Grounded Generative Imaging Pipeline:** Orchestrates Gemini Pro Image and Gemini Flash via a server-side Vertex AI proxy to power garment-to-person virtual try-on, product-to-model synthesis, and PDF lookbook export.
+  * **Argolis-Compliant Multi-Container Serverless:** Runs unified frontend, Express API, and scraper sidecar containers on Cloud Run with internal load-balancer ingress behind an External HTTPS Load Balancer and IAP.
+owner: xcyu
+team_owner: 1670033130013
+demo_guide: https://docs.google.com/document/d/1Z-pw2rK2E7073sYNoVgKhcwhxtVju0oIFwdIn7DgTaI/edit?resourcekey=0-E_ccc3ehc334RD-D7rcY0A
+products:
+  - vertex_ai
+  - generative_ai_on_vertex_ai
+  - gemini_api
+  - cloud_run
+industries:
+  - retail
+  - consumer_packaged_goods
+artifacts:
+  - title: Live Interactive Demo Application
+
+    type: live_application
+
+    link: https://gen-fashion-atelier-iytuxr6j5a-uc.a.run.app
+
+  - title: GitHub Source Repository
+
+    type: code_repo
+
+    link: https://github.com/hillxcyu/genAtelier
+
+featured_artifact_title: Live Interactive Demo Application
+# images:
+#   - https://storage.cloud.google.com/YOUR_BUCKET/hero-card.png
+# click_to_deploy_path: <demo_id>-genfashion-atelier/tree/main/click-to-deploy

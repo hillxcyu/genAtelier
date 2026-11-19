@@ -21,7 +21,7 @@ RUN npm install --omit=dev
 
 COPY --from=builder /app/dist-server ./dist-server
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/dummy-retailer ./dummy-retailer
+COPY --from=builder /app/dummy-retailer ./dist/dummy-retailer
 
 ENV PORT=8080
 EXPOSE 8080
