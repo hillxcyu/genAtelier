@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUMINA VOILE | Modern Luxury Fashion</title>
+    <style>
+        :root {
+            --primary: #000000;
+            --secondary: #ffffff;
+            --accent: #c5a572; /* Subtle Gold */
+            --bg: #f8f8f8;
+            --text-main: #1a1a1a;
+            --text-sub: #666666;
+            --font-serif: 'Playfair Display', serif;
+            --font-sans: 'Inter', sans-serif;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--secondary);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* --- Header & Nav --- */
+        header {
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+
+        .logo {
+            font-family: var(--font-serif);
+            font-size: 2rem;
+            letter-spacing: 0.3rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        nav ul li {
+            list-style: none;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav ul li a:hover {
+            color: var(--accent);
+        }
+
+        .nav-icons {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        /* --- Hero --- */
+        .hero {
+            height: 90vh;
+            background: #000;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        .hero img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.7;
+        }
+
+        .hero-content {
+            position: relative;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .hero-content h1 {
+            font-family: var(--font-serif);
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            font-style: italic;
+        }
+
+        .hero-content p {
+            font-size: 1.2rem;
+            letter-spacing: 0.2rem;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .cta-btn {
+            padding: 1rem 2.5rem;
+            background: white;
+            color: black;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .cta-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* --- Product Grid --- */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 4rem;
+        }
+
+        .section-title {
+            font-family: var(--font-serif);
+            font-size: 2.5rem;
+            margin-bottom: 4rem;
+            text-align: center;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 3rem;
+        }
+
+        .product-card {
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .product-image {
+            aspect-ratio: 3/4;
+            background: #f0f0f0;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.7s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .product-card:hover .product-image img {
+            transform: scale(1.05);
+        }
+
+        .product-info {
+            text-align: center;
+        }
+
+        .product-category {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            color: var(--text-sub);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .product-name {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-price {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--text-main);
+        }
+
+        /* --- Footer --- */
+        footer {
+            background: #111;
+            color: #888;
+            padding: 4rem;
+            text-align: center;
+            font-size: 0.8rem;
+            letter-spacing: 0.05rem;
+            border-top: 1px solid #222;
+        }
+
+        .footer-logo {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 2rem;
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">Lumina Voile</div>
+        <nav>
+            <ul>
+                <li><a href="#">New Arrivals</a></li>
+                <li><a href="#">Women</a></li>
+                <li><a href="#">Men</a></li>
+                <li><a href="#">Accessories</a></li>
+                <li><a href="#">The Studio</a></li>
+            </ul>
+        </nav>
+        <div class="nav-icons">
+            <span style="font-size: 1.2rem; cursor: pointer;">🔍</span>
+            <span style="font-size: 1.2rem; cursor: pointer;">🛍️</span>
+        </div>
+    </header>
+
+    <section class="hero">
+        <img src="/dummy-retailer/images/w1.png?v=2" alt="Hero Campaign">
+        <div class="hero-content">
+            <p>Collection 2026</p>
+            <h1>The Art of Silence</h1>
+            <a href="#" class="cta-btn">Explore Now</a>
+        </div>
+    </section>
+
+    <main class="container">
+        <h2 class="section-title">Women's Collection</h2>
+        <div class="product-grid">
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w1.png?v=2" alt="Silk Satin Evening Gown"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Eveningwear</span>
+                    <h3 class="product-name">Silk Satin Evening Gown</h3>
+                    <p class="product-price">$2,450</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w2.png?v=2" alt="Structured Wool Blazer"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Tailoring</span>
+                    <h3 class="product-name">Structured Wool Blazer</h3>
+                    <p class="product-price">$1,200</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w3.png?v=2" alt="Cashmere Turtleneck Sweater"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Knitwear</span>
+                    <h3 class="product-name">Cashmere Turtleneck Sweater</h3>
+                    <p class="product-price">$850</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w4.png?v=2" alt="Pleated Midi Skirt"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Skirts</span>
+                    <h3 class="product-name">Pleated Midi Skirt</h3>
+                    <p class="product-price">$790</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w5.png?v=2" alt="Oversized Poplin Shirt"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Tops</span>
+                    <h3 class="product-name">Oversized Poplin Shirt</h3>
+                    <p class="product-price">$450</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w6.png?v=2" alt="Wide-Leg Linen Trousers"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Bottoms</span>
+                    <h3 class="product-name">Wide-Leg Linen Trousers</h3>
+                    <p class="product-price">$620</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w7.png?v=2" alt="Pointed-Toe Leather Pumps"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Shoes</span>
+                    <h3 class="product-name">Pointed-Toe Leather Pumps</h3>
+                    <p class="product-price">$850</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w8.png?v=2" alt="Minimalist Leather Tote Bag"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Accessories</span>
+                    <h3 class="product-name">Minimalist Leather Tote Bag</h3>
+                    <p class="product-price">$1,150</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w9.png?v=2" alt="Gold Chain Link Necklace"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Jewelry</span>
+                    <h3 class="product-name">Gold Chain Link Necklace</h3>
+                    <p class="product-price">$2,800</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/w10.png?v=2" alt="Belted Wool Trench Coat"></div>
+                <div class="product-info">
+                    <span class="product-category">Women - Outerwear</span>
+                    <h3 class="product-name">Belted Wool Trench Coat</h3>
+                    <p class="product-price">$1,950</p>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title" style="margin-top: 6rem;">Men's Collection</h2>
+        <div class="product-grid">
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m1.png?v=2" alt="Tailored Navy Suit"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Tailoring</span>
+                    <h3 class="product-name">Tailored Navy Suit</h3>
+                    <p class="product-price">$3,200</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m2.png?v=2" alt="Leather Biker Jacket"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Outerwear</span>
+                    <h3 class="product-name">Leather Biker Jacket</h3>
+                    <p class="product-price">$2,100</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m3.png?v=2" alt="Oversized Cotton Hoodie"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Streetwear</span>
+                    <h3 class="product-name">Oversized Cotton Hoodie</h3>
+                    <p class="product-price">$450</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m4.png?v=2" alt="Slim-Fit Selvedge Denim"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Denim</span>
+                    <h3 class="product-name">Slim-Fit Selvedge Denim</h3>
+                    <p class="product-price">$350</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m5.png?v=2" alt="Cuban Collar Linen Shirt"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Tops</span>
+                    <h3 class="product-name">Cuban Collar Linen Shirt</h3>
+                    <p class="product-price">$280</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m6.png?v=2" alt="Pleated Chino Trousers"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Bottoms</span>
+                    <h3 class="product-name">Pleated Chino Trousers</h3>
+                    <p class="product-price">$320</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m7.png?v=2" alt="Minimalist Leather Sneakers"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Shoes</span>
+                    <h3 class="product-name">Minimalist Leather Sneakers</h3>
+                    <p class="product-price">$550</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m8.png?v=2" alt="Luxury Chronograph Watch"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Accessories</span>
+                    <h3 class="product-name">Luxury Chronograph Watch</h3>
+                    <p class="product-price">$4,500</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m9.png?v=2" alt="Double-Breasted Cashmere Overcoat"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Outerwear</span>
+                    <h3 class="product-name">Double-Breasted Cashmere Overcoat</h3>
+                    <p class="product-price">$2,850</p>
+                </div>
+            </div>
+            <div class="product-card">
+                <div class="product-image"><img src="/dummy-retailer/images/m10.png?v=2" alt="Graphic Print Silk Shirt"></div>
+                <div class="product-info">
+                    <span class="product-category">Men - Tops</span>
+                    <h3 class="product-name">Graphic Print Silk Shirt</h3>
+                    <p class="product-price">$650</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <span class="footer-logo">Lumina Voile</span>
+        <p>&copy; 2026 LUMINA VOILE LTD. ALL RIGHTS RESERVED.</p>
+        <p style="margin-top: 1rem; font-size: 0.6rem;">PARIS • LONDON • NEW YORK • TOKYO</p>
+    </footer>
+
+</body>
+</html>

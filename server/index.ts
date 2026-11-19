@@ -1,3 +1,19 @@
+/**
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -5,6 +21,9 @@ import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { scrapeWebsite } from './services/scraper.ts';
+import { processWithGemini } from './services/extractor.ts';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -37,6 +56,11 @@ if (projectId) {
   });
 }
 
+// --- STATIC PATHS ---
+const distPath = path.join(__dirname, '../dist');
+const indexPath = path.join(distPath, 'index.html');
+
+// 1. API Routes
 app.post('/api/generate-content', async (req, res) => {
   console.log('Received request for /api/generate-content');
   try {
@@ -56,31 +80,23 @@ app.post('/api/generate-content', async (req, res) => {
       config: config
     });
     
-    // Handle SDK wrapper: if response.response exists, return that (it contains candidates)
-    // Otherwise return response directly.
     const rawResponse = (response as any).response ? (response as any).response : response;
 
-    // The SDK's `text()` method is a helper that isn't serialized in JSON.
-    // We need to manually extract it if it exists.
     let textContent = null;
     try {
       if (typeof response.text === 'function') {
          textContent = response.text();
       } else if (rawResponse.candidates && rawResponse.candidates.length > 0) {
-          // Fallback extraction if .text() isn't available on the raw object
           textContent = rawResponse.candidates[0].content.parts.map((p: any) => p.text).join('');
       }
     } catch (e) {
-      // Ignore text extraction errors (e.g. for image generation responses)
+      // Ignore text extraction errors
     }
 
     const dataToSend = {
         ...rawResponse,
-        text: textContent // Add the extracted text as a property
+        text: textContent
     };
-
-    // Log the response structure (shallow) to debug
-    console.log('Response received, sending data keys:', Object.keys(dataToSend));
 
     res.json(dataToSend);
   } catch (error: any) {
@@ -89,16 +105,70 @@ app.post('/api/generate-content', async (req, res) => {
   }
 });
 
-// Serve static files from the React app if available
-const distPath = path.join(__dirname, '../dist');
-const indexPath = path.join(distPath, 'index.html');
+app.post('/api/extract-brand', async (req, res) => {
+  console.log('Received request for /api/extract-brand');
+  try {
+    const { url } = req.body;
+    if (!url) {
+      res.status(400).json({ error: 'URL is required' });
+      return;
+    }
 
-if (fs.existsSync(indexPath)) {
+    console.log(`Scraping website: ${url}`);
+    const scrapedData = await scrapeWebsite(url);
+    
+    console.log('Extracting brand vibe with Gemini');
+    const extractionResult = await processWithGemini(ai, scrapedData);
+
+    res.json({
+      success: true,
+      data: extractionResult
+    });
+  } catch (error: any) {
+    console.error('Error in brand extraction:', error);
+    res.status(500).json({ error: error.message || 'Failed to extract brand' });
+  }
+});
+
+app.get('/api/proxy-image', async (req, res) => {
+  const imageUrl = req.query.url as string;
+  if (!imageUrl) {
+    res.status(400).send('Image URL is required');
+    return;
+  }
+
+  try {
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 10000 // 10 second timeout
+    });
+    
+    res.set('Content-Type', response.headers['content-type']);
+    res.set('Access-Control-Allow-Origin', '*');
+    res.send(response.data);
+
+  } catch (error) {
+    console.error(`Error proxying image ${imageUrl}:`, error);
+    res.status(500).send('Failed to proxy image.');
+  }
+});
+
+// 2. Serve Static Content (Unifies React App and Dummy Retailer)
+if (fs.existsSync(distPath)) {
+  console.log(`[Static] Serving unified content from ${distPath}`);
   app.use(express.static(distPath));
-  // The "catchall" handler: for any request that doesn't
-  // match one above, send back React's index.html file.
+  
+  // 3. Catch-all: Route non-file requests to the Frontend's index.html
   app.get('*', (req, res) => {
-    res.sendFile(indexPath);
+    // Exclude API routes
+    if (!req.path.startsWith('/api')) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Not Found');
+    }
   });
 }
 

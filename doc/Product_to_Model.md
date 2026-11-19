@@ -17,5 +17,5 @@ The **Product-to-Model** module is a tool for brands to generate professional li
     *   The "Brand DNA" (mood, colors) is injected into the prompt to ensure the final shot aligns with the brand's campaign style.
 
 ## Technical Implementation
-*   **Model:** `gemini-2.5-flash-image`.
+*   **Model:** `gemini-3-pro-image-preview`.
 *   **Context Awareness:** The prompt dynamically constructs a scene description based on the selected configuration and the global Brand Vibe.

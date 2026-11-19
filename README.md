@@ -46,11 +46,12 @@ Generates targeted marketing assets for specific user segments.
 ## 🛠️ Getting Started
 
 ### Prerequisites
-*   **Node.js** (v18 or higher)
+*   **Docker Desktop** (or Docker Engine) for running services locally with `docker-compose`.
+*   **Node.js** (v18 or higher) - *for development purposes outside Docker, if preferred.*
 *   **Google Gemini API Key** (Get one at [aistudio.google.com](https://aistudio.google.com))
     *   *Note: Some features like VTO require a paid tier key for `gemini-3-pro-image-preview`.*
 
-### Installation
+### Local Development Setup
 
 1.  **Clone the repository:**
     ```bash
@@ -58,52 +59,83 @@ Generates targeted marketing assets for specific user segments.
     cd genfashion-atelier
     ```
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-
-3.  **Set up Environment Variables:**
-    Create a `.env` file in the root directory and add your API key:
+2.  **Set up Environment Variables:**
+    Create a `.env` file in the root directory and add your API key. If deploying to Cloud Run, ensure these are configured in `service.yaml` or through Cloud Run console.
     ```env
     GEMINI_API_KEY=your_api_key_here
+    GOOGLE_CLOUD_PROJECT=your_gcp_project_id
+    GOOGLE_CLOUD_LOCATION=global # Or your specific region if not global
+    ```
+
+3.  **Run with Docker Compose:**
+    This will build and start all services (frontend, backend, and the stealth scraper) as defined in `docker-compose.yml`.
+    ```bash
+    docker compose up --build -d
+    ```
+    The application will be accessible at `http://localhost:3000`.
+    To stop the services:
+    ```bash
+    docker compose down
     ```
 
 ### Deployment to Google Cloud Run
 
-Since this is a client-side application, the API key must be embedded during the **build process**.
+For automated, Argolis-compliant provisioning (multi-container Cloud Run + External HTTPS Load Balancer + IAP + least-privilege runtime SA), use the Terraform configuration in [`click-to-deploy/`](click-to-deploy/) and follow the full walkthrough in [`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md).
 
-1.  **Create the Docker repository (if not exists):**
-    ```bash
-    gcloud artifacts repositories create my-repo --repository-format=docker \
-    --location=us-central1 --description="Docker repository"
-    ```
+Manual deployment is also supported via **Google Cloud Build** using `cloudbuild.yaml` and `service.yaml`:
 
-2.  **Build the image:**
-    Replace `YOUR_API_KEY` with your actual Gemini API key.
-    ```bash
-    gcloud builds submit --tag us-central1-docker.pkg.dev/PROJECT_ID/my-repo/genfashion-atelier \
-      --build-arg GEMINI_API_KEY=YOUR_API_KEY .
-    ```
+#### 1. Configure GCP Project
+Ensure your target GCP project (`YOUR_PROJECT_ID`) has:
+*   **Cloud Run API** (`run.googleapis.com`) enabled.
+*   **Cloud Build API** (`cloudbuild.googleapis.com`) enabled.
+*   **Artifact Registry API** (`artifactregistry.googleapis.com`) enabled.
+*   **Vertex AI API** (`aiplatform.googleapis.com`) enabled.
+*   The Cloud Build Service Account (`YOUR_PROJECT_NUMBER@cloudbuild.gserviceaccount.com`) has:
+    *   `roles/run.admin`
+    *   `roles/iam.serviceAccountUser`
+    *   `roles/artifactregistry.writer`
 
-3.  **Deploy to Cloud Run:**
-    ```bash
-    gcloud run deploy genfashion-atelier \
-      --image us-central1-docker.pkg.dev/PROJECT_ID/my-repo/genfashion-atelier \
-      --platform managed \
-      --region us-central1 \
-      --allow-unauthenticated
-    ```
+#### 2. Service Account Permissions
+Update `YOUR_RUNTIME_SERVICE_ACCOUNT` in `service.yaml` to a dedicated least-privilege service account with `roles/aiplatform.user` to access Vertex AI Gemini models.
 
-**⚠️ Security Note:** Since the API key is embedded in the client-side code, it will be visible to users in the browser. You **MUST** restrict your API key in the Google Cloud Console:
-*   Go to **APIs & Services > Credentials**.
-*   Edit your API key.
-*   Set **Application restrictions** to **HTTP referrers (web sites)**.
-*   Add your Cloud Run URL (e.g., `https://genfashion-atelier-xyz.a.run.app/*`).
+#### 3. Triggering the Deployment
+
+**a) Manual Trigger (CLI):**
+From your project root, run:
+```bash
+gcloud builds submit --config cloudbuild.yaml .
+```
+This command builds your Docker images, pushes them to Artifact Registry, and deploys the multi-container Cloud Run service as defined in `service.yaml`.
+
+**b) Automatic Trigger (Git Push):**
+Set up a **Cloud Build Trigger** in the Google Cloud Console:
+1.  Navigate to **Cloud Build > Triggers**.
+2.  Click **Create Trigger**.
+3.  **Name:** `deploy-gen-fashion-atelier-uat`
+4.  **Event:** `Push to a branch`
+5.  **Source:** Connect your repository (GitHub/Bitbucket/etc.)
+6.  **Branch:** `^main$` (or your target branch)
+7.  **Configuration:** Select `Cloud Build configuration file (yaml or json)` and specify `cloudbuild.yaml`.
+8.  **Create** the trigger.
+
+Every push to the configured branch will now automatically trigger a full build and deployment to Cloud Run.
+
+#### 4. Accessing the Deployed Service
+Once deployed, your Cloud Run service URL will be displayed in the Cloud Console or by running `gcloud run services describe gen-fashion-atelier-uat --region=us-central1`.
+
+**Multi-Container Architecture Note:**
+The `service.yaml` defines `gen-fashion-atelier-uat` as a multi-container Cloud Run service. The `app` (frontend/backend) and `scraper` containers run in the same pod. The `app` container can communicate with the `scraper` container directly via `http://localhost:4000/scrape` as specified in the `SCRAPER_SERVICE_URL` environment variable within `service.yaml`.
+
+---
+
+## 💡 Technologies Used
 
 *   **Frontend:** React, TypeScript, Vite
 *   **Styling:** Tailwind CSS, Framer Motion
 *   **AI Models:**
-    *   `gemini-2.5-flash` (Text, Logic, JSON)
+    *   `gemini-3-flash-preview` (Text, Logic, JSON)
     *   `gemini-3-pro-image-preview` (High-Fidelity Image Generation)
 *   **Icons:** Lucide React
+*   **Backend:** Node.js, Express.js
+*   **Scraping:** `axios`, `cheerio`, `puppeteer-extra` (with stealth plugin)
+*   **Deployment:** Google Cloud Run, Cloud Build, Artifact Registry

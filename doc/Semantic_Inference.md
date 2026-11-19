@@ -1,33 +1,26 @@
-# Semantic Inference: How Brand Analysis Works
+# Semantic Inference: From HTML to Brand DNA
 
-The GenFashion Atelier application analyzes a brand's "vibe" from a URL using a process called **Semantic Inference** powered by **Gemini 2.5 Flash**.
+The GenFashion Atelier application analyzes a brand's "vibe" by transforming raw, scraped HTML into a structured design system using a process called **Semantic Inference** powered by **Gemini 3 Flash Preview**.
 
-Here is the step-by-step breakdown of how it works in the code:
+## 1. The Context
+When a user inputs a URL, the system scrapes the raw HTML. This data is messy, unstructured, and noisy. Semantic inference is the "brain" that makes sense of it.
 
-## 1. The Prompt
-When you enter a URL (e.g., `zara.com`), the app constructs a specific prompt for the AI. It doesn't just ask "what is this?"; it asks for a structured brand analysis.
-
-> **Prompt:** `Analyze the likely brand identity for a fashion retailer with the URL: "${url}".`
-
-## 2. Knowledge Retrieval (Not Scraping)
-Instead of trying to scrape the live HTML of the website (which can be slow, blocked, or messy), the app leverages Gemini's vast training data. The model "knows" the aesthetic, color palette, and typical products of major brands associated with that URL.
-
-*   **Fallback:** If the URL is unknown or generic, the prompt instructs the model to *"infer a plausible high-end fashion style,"* ensuring the app always produces a beautiful result.
+## 2. The Prompt Strategy
+The system constructs a prompt that positions the AI as an expert UI/UX designer and fashion analyst.
+> **Task:** "Analyze the provided HTML content. Extract the visual identity, infer the mood, and identify product card patterns."
 
 ## 3. Structured Extraction
-The AI is instructed to return the data in a strict **JSON format** containing specific design tokens:
+The AI processes the HTML context and returns a strict **JSON object** (`BrandVibe`), inferring missing pieces where necessary:
 
-*   **Palette:** 3-5 hex color codes (e.g., `#000000` for primary, `#c026d3` for accent).
-*   **Typography:** It categorizes the font style as `sans`, `serif`, or `mono`.
-*   **Mood & Keywords:** It generates descriptive terms like "Minimalist Luxury" or "Bohemian Chic."
-*   **Representative Catalog:** It even hallucinates a plausible product list (names, categories, prices) consistent with that brand's inventory.
+*   **Palette:** Identifies dominant colors from inline styles or infers them from the brand's mood (e.g., if "Minimalist", use #FFFFFF and #000000).
+*   **Typography:** Detects font names in the code or categorizes the likely style (`serif`, `sans`).
+*   **Mood & Keywords:** Synthesizes terms like "Urban Streetwear" or "Timeless Luxury" by reading the marketing copy found in the HTML.
+*   **Catalog extraction:** Recognizes repeating patterns of images and prices to build a list of real products.
 
-## 4. Dynamic Theming
-The application takes this JSON output and instantly applies it to the UI:
-
-*   The **CSS Variables** (`--text-primary`, `--card-bg`) are updated to match the brand's contrast levels.
-*   The **Global Font** switches to match the `fontCategory`.
-*   The **Ambient Glow** in the background changes to the brand's primary and accent colors.
+## 4. Why "Semantic"?
+It is "semantic" because the AI understands the *meaning* of the content, not just the syntax.
+*   It knows that a generic `div` containing "$2,500" and "Silk Gown" is a **Product Card**.
+*   It understands that "Carbon Neutral" and "Recycled" implies a **Sustainable** vibe.
 
 ## Summary
-In essence, the system translates a simple text URL into a comprehensive **Design System** and **Data Model** in real-time, allowing the application to "wear" the brand's identity instantly.
+Semantic Inference bridges the gap between raw web data and a usable Design System, allowing the application to adapt to any brand's identity dynamically.

@@ -1,0 +1,55 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: gen-fashion-atelier
+  labels:
+    cloud.googleapis.com/location: YOUR_REGION
+  annotations:
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      serviceAccountName: YOUR_RUNTIME_SERVICE_ACCOUNT
+      containers:
+        - name: app
+          image: YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_ARTIFACT_REPO/gen-fashion-atelier:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GOOGLE_CLOUD_PROJECT
+              value: "YOUR_PROJECT_ID"
+            - name: GOOGLE_CLOUD_LOCATION
+              value: "global"
+            - name: SCRAPER_SERVICE_URL
+              value: "http://localhost:4000/scrape"
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+        - name: scraper
+          image: YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_ARTIFACT_REPO/gen-fashion-scraper:latest
+          env:
+            - name: PORT
+              value: "4000"
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi

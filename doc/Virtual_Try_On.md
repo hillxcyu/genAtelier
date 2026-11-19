@@ -1,6 +1,6 @@
 # Virtual Try-On (VTO)
 
-The **Virtual Try-On** module allows customers to visualize how garments will look on their own bodies, reducing purchase anxiety and return rates. It now features an intelligent styling assistant that recommends complete outfits.
+The **Virtual Try-On** module allows customers to visualize how garments will look on their own bodies, reducing purchase anxiety and return rates. It features an intelligent styling assistant that recommends complete outfits.
 
 ## Core Functionality
 
@@ -22,10 +22,11 @@ The **Virtual Try-On** module allows customers to visualize how garments will lo
 
 ## Technical Implementation
 *   **VTO Model:** `gemini-3-pro-image-preview` is used for high-fidelity image generation, capable of handling complex multi-item prompts.
-*   **Styling Model:** `gemini-2.5-flash` analyzes the garment image and queries the JSON catalog to return structured recommendations.
+*   **Styling Model:** `gemini-3-flash-preview` analyzes the garment image and queries the JSON catalog to return structured recommendations.
 *   **Prompt Engineering:** 
     *   *Styling:* "Analyze this garment and pick 3 matching items from this JSON list..."
     *   *VTO:* "Generate a photorealistic image of person A wearing garment B and accessories C, D..."
+*   **Image Proxy:** A backend endpoint (`/api/proxy-image`) is used to fetch external catalog images server-side. This bypasses CORS restrictions, ensuring external images can be successfully processed by the canvas and AI models.
 *   **UX Features:**
     *   **Magic Trigger:** A central, pulsing "Sparkles" button serves as the primary call-to-action.
     *   **Slide-out Drawer:** Provides a seamless browsing experience for the product catalog.

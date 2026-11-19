@@ -1,3 +1,19 @@
+/**
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { ai } from '../utils/genai';
 import { BrandVibe, CatalogItem } from '../types';
 import { saveCatalogToDB } from '../utils/db';
@@ -48,39 +64,36 @@ export async function generateBrandAndCatalog(
   batchSize: number = 3
 ): Promise<{ brandVibe: BrandVibe; catalog: CatalogItem[] }> {
   
-  if (onProgress) onProgress('Analyzing Brand DNA...');
+  if (onProgress) onProgress('Scraping & Extracting Brand DNA...');
 
   try {
-    const prompt = `Analyze the likely brand identity for a fashion retailer with the URL: "${url}". 
-    Return a JSON object with:
-    - name: The likely brand name.
-    - colors: array of 3-5 hex codes representing the brand palette.
-    - fonts: array of 2 font names likely used.
-    - fontCategory: One of "sans", "serif", "mono".
-    - mood: a short string describing the brand vibe (e.g., "Minimalist Luxury", "Bohemian Chic").
-    - keywords: array of 5 adjectives describing the style.
-    - products: A list of 15 representative products (3 categories, 5 items each) with 'name', 'category', and 'price'.
-    
-    If the URL is generic or unknown, infer a plausible high-end fashion style and product mix.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: { role: 'user', parts: [{ text: prompt }] },
-      config: { responseMimeType: 'application/json' }
+    // 1. Call Backend Scraper + Extractor
+    const response = await fetch('/api/extract-brand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
     });
 
-    const text = response.text?.replace(/```json\n?|```/g, '').trim() || '{}';
-    const data: BrandAnalysisResult = JSON.parse(text);
+    if (!response.ok) {
+      throw new Error(`Extraction failed: ${response.statusText}`);
+    }
 
+    const data = await response.json();
+    
     // Create Brand Vibe
     const brandVibe: BrandVibe = {
-      name: data.name || url,
-      colors: data.colors ? data.colors.slice(0, 3) : ['#000000', '#ffffff', '#333333'],
-      font: data.fontCategory || 'sans',
-      accentColor: data.colors ? (data.colors[1] || data.colors[0]) : '#c026d3',
-      mood: data.mood,
-      keywords: data.keywords,
-      fonts: data.fonts
+      name: data.brandVibe.name || url,
+      palette: data.brandVibe.palette || {
+          primary: '#000000',
+          secondary: '#333333',
+          accent: '#c026d3',
+          background: '#ffffff',
+          text: '#000000'
+      },
+      font: data.brandVibe.fontCategory || 'sans',
+      mood: data.brandVibe.mood,
+      keywords: data.brandVibe.keywords,
+      fonts: data.brandVibe.fonts
     };
 
     if (onBrandVibeReady) {
@@ -89,27 +102,33 @@ export async function generateBrandAndCatalog(
 
     const newCatalog: CatalogItem[] = [];
 
-    // Generate Catalog Images
+    // 2. Process Products (Generate images if scraped ones are missing or low quality)
     if (data.products && data.products.length > 0) {
       const products = data.products;
-      const mood = data.mood || "High-end Fashion";
+      const mood = data.brandVibe.mood || "High-end Fashion";
 
       for (let i = 0; i < products.length; i += batchSize) {
         const batch = products.slice(i, i + batchSize);
         if (onProgress) {
-          onProgress(`Extracting catalog assets ${i + 1}-${Math.min(i + batchSize, products.length)} of ${products.length}...`);
+          onProgress(`Processing catalog assets ${i + 1}-${Math.min(i + batchSize, products.length)} of ${products.length}...`);
         }
         
-        const batchResults = await Promise.all(batch.map(async (p, batchIndex) => {
+        const batchResults = await Promise.all(batch.map(async (p: any, batchIndex: number) => {
           const globalIndex = i + batchIndex;
-          let imageUrl = await generateProductImage(p.name, p.category, mood);
+          let imageUrl = p.imageUrl;
+
+          // If no image scraped, generate one
+          if (!imageUrl || imageUrl.length < 10) {
+             imageUrl = await generateProductImage(p.name, p.category, mood);
+          }
           
+          // Fallback
           if (!imageUrl) {
              imageUrl = `https://picsum.photos/seed/${p.name.replace(/\s/g, '')}/400/600`;
           }
 
           return {
-            id: `generated-${globalIndex}`,
+            id: `extracted-${globalIndex}`,
             name: p.name,
             category: p.category,
             price: p.price,
